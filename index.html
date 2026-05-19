@@ -1,0 +1,3297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Run Raja Run - Ancient Temple Odyssey</title>
+    <!-- Tailwind CSS for modern responsive UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            background-color: #0c0501;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        .orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        /* Hide scrollbar */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        /* Custom golden shadows */
+        .neon-shadow-gold {
+            filter: drop-shadow(0 0 10px rgba(234, 179, 8, 0.7));
+        }
+        .neon-shadow-amber {
+            filter: drop-shadow(0 0 12px rgba(217, 119, 6, 0.8));
+        }
+        .gold-border {
+            box-shadow: 0 0 15px rgba(234, 179, 8, 0.4), inset 0 0 15px rgba(234, 179, 8, 0.2);
+            border: 2px solid rgba(234, 179, 8, 0.6);
+        }
+        /* Mobile touch joystick indicator */
+        .touch-indicator {
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        
+        /* Floating golden particles in cinematic loading intro */
+        @keyframes float-spark {
+            0% { transform: translateY(105vh) translateX(0) scale(0.3); opacity: 0; }
+            30% { opacity: 0.8; }
+            100% { transform: translateY(-10vh) translateX(60px) scale(1.2); opacity: 0; }
+        }
+        .intro-spark {
+            position: absolute;
+            bottom: 0;
+            background: radial-gradient(circle, rgba(245, 158, 11, 0.9) 0%, transparent 80%);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: float-spark infinite linear;
+        }
+        
+        /* Ancient stone masonry wall texture overlay */
+        .intro-stone-texture {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(12, 5, 1, 0.6) 0%, rgba(7, 3, 1, 0.95) 90%),
+                /* Masonry mortar lines simulating detailed temple stone blocks */
+                repeating-linear-gradient(0deg, transparent, transparent 58px, rgba(0, 0, 0, 0.5) 58px, rgba(0, 0, 0, 0.5) 60px, transparent 60px),
+                repeating-linear-gradient(90deg, transparent, transparent 118px, rgba(0, 0, 0, 0.5) 118px, rgba(0, 0, 0, 0.5) 120px, transparent 120px),
+                /* Fine weathered rock noise grain to match the game's actual ballast texture */
+                radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                radial-gradient(rgba(0, 0, 0, 0.45) 1px, transparent 1px);
+            background-size: 100% 100%, 120px 120px, 240px 240px, 5px 5px, 7px 7px;
+            background-repeat: repeat;
+            opacity: 0.88;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        /* Pulsating fire/torchlight casting ambient warm temple glows */
+        @keyframes torch-flicker {
+            0%, 100% { transform: scale(1.0) translate(0px, 0px); opacity: 0.78; }
+            25% { transform: scale(1.08) translate(-15px, 8px); opacity: 0.88; }
+            50% { transform: scale(0.96) translate(12px, -12px); opacity: 0.72; }
+            75% { transform: scale(1.04) translate(-8px, -6px); opacity: 0.84; }
+        }
+        .intro-torch-flare {
+            position: absolute;
+            inset: -15%;
+            background: radial-gradient(circle, rgba(217, 119, 6, 0.38) 0%, rgba(234, 179, 8, 0.14) 38%, transparent 68%);
+            animation: torch-flicker 5s infinite ease-in-out;
+            pointer-events: none;
+            mix-blend-mode: screen;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body class="relative w-screen h-screen">
+
+    <!-- CINEMATIC INTRO LOADING SCREEN (RAVITEJA TECH PRESENTS) -->
+    <div id="intro-screen" class="absolute inset-0 bg-[#070301] z-50 flex flex-col items-center justify-center pointer-events-auto transition-opacity duration-1000 overflow-hidden">
+        <!-- Ancient stone flagstone texture background -->
+        <div class="intro-stone-texture"></div>
+        <!-- Pulsating temple torchlight flare -->
+        <div class="intro-torch-flare"></div>
+        <!-- Golden particle container -->
+        <div class="absolute inset-0 opacity-40 overflow-hidden pointer-events-none z-10" id="intro-particles"></div>
+        
+        <!-- FIRST: Loading Progress Elements -->
+        <div id="intro-loading-elements" class="flex flex-col items-center text-center max-w-md px-6 z-10 transition-all duration-500 transform">
+            <span class="text-amber-500/80 font-bold uppercase tracking-[0.3em] text-[10px] orbitron mb-4 animate-pulse">PRESENTS</span>
+            
+            <!-- RAVITEJA TECH Shuffling/Glowing Logo -->
+            <h1 id="intro-logo" class="text-4xl md:text-6xl font-black tracking-widest uppercase orbitron text-transparent bg-clip-text bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 drop-shadow-[0_0_20px_rgba(234,179,8,0.5)]">
+                RAVITEJA TECH
+            </h1>
+            
+            <div class="w-48 h-[2.5px] bg-amber-500/20 mt-8 mb-4 rounded-full overflow-hidden relative">
+                <!-- Golden progress filler -->
+                <div id="intro-progress-bar" class="h-full bg-gradient-to-r from-amber-500 to-yellow-400 w-0 transition-all duration-300"></div>
+            </div>
+            
+            <!-- Loading Status -->
+            <span id="intro-status" class="text-stone-400 text-xs font-bold uppercase tracking-widest orbitron">Initializing Engine... 0%</span>
+        </div>
+
+        <!-- SECOND: Dramatic Title Reveal elements -->
+        <div id="intro-title-reveal" class="absolute flex flex-col items-center text-center max-w-lg px-6 z-10 opacity-0 scale-90 transition-all duration-1000 transform pointer-events-none hidden">
+            <div class="bg-amber-600/30 border border-amber-500/60 text-amber-400 px-4 py-1 rounded-md text-xs font-bold uppercase tracking-widest mb-3 orbitron animate-pulse">
+                Ancient Temple Odyssey
+            </div>
+            <h1 class="text-5xl md:text-7xl font-black tracking-tight uppercase leading-none orbitron text-transparent bg-clip-text bg-gradient-to-r from-amber-500 via-orange-400 to-yellow-500 drop-shadow-[0_0_35px_rgba(245,158,11,0.65)]">
+                RUN RAJA RUN
+            </h1>
+            <div class="w-24 h-[1px] bg-amber-500/35 my-4"></div>
+            <span class="text-amber-500 font-extrabold uppercase tracking-[0.25em] text-[10px] orbitron mb-6">ENTER THE MAJESTY</span>
+            <span class="text-stone-500/80 font-bold tracking-[0.22em] orbitron text-[8px] uppercase select-none">Copyright © 2026 by Raviteja Dadi</span>
+        </div>
+    </div>
+
+    <!-- GAME OVERLAY & SCREENS -->
+    <div id="ui-container" class="absolute inset-0 z-10 flex flex-col justify-between pointer-events-none">
+        
+        <!-- SMALL TOGGLE CUSTOMIZATION BUTTON AT TOP RIGHT -->
+        <div class="absolute top-4 right-4 z-30 pointer-events-auto">
+            <button id="btn-toggle-customizer" class="flex items-center gap-2 bg-black/90 hover:bg-amber-950 border border-amber-500/40 text-amber-400 font-extrabold text-xs uppercase tracking-widest py-3 px-5 rounded-xl shadow-2xl transition-all transform active:scale-95 orbitron">
+                <span class="text-amber-500">👑</span> CUSTOMIZE RAJA
+            </button>
+        </div>
+
+        <!-- FLOATING MENU BAR: EXACTLY THREE LINES RETRACTABLE DROPDOWN (TOP RIGHT ORIGIN) -->
+        <div id="top-customizer" class="absolute top-16 right-4 w-[90%] max-w-sm bg-stone-950/95 backdrop-blur-xl border border-amber-500/30 rounded-2xl p-4 shadow-2xl z-20 pointer-events-auto opacity-0 scale-95 pointer-events-none transition-all duration-300 transform origin-top-right">
+            <div class="space-y-3">
+                <!-- Line 1: Shirt Color -->
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-amber-500/80 font-bold uppercase tracking-wider">Royal Tunic</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="setPlayerColor('shirt', '#dc2626', 'Ruby', this)" class="w-6 h-6 rounded-full bg-red-600 border-2 border-amber-400 ring-2 ring-amber-500/30 transition-transform active:scale-95"></button>
+                        <button onclick="setPlayerColor('shirt', '#d97706', 'Amber', this)" class="w-6 h-6 rounded-full bg-amber-600 border border-transparent hover:border-amber-400 transition-transform active:scale-95"></button>
+                        <button onclick="setPlayerColor('shirt', '#059669', 'Emerald', this)" class="w-6 h-6 rounded-full bg-emerald-600 border border-transparent hover:border-amber-400 transition-transform active:scale-95"></button>
+                        <button onclick="setPlayerColor('shirt', '#2563eb', 'Sapphire', this)" class="w-6 h-6 rounded-full bg-blue-600 border border-transparent hover:border-amber-400 transition-transform active:scale-95"></button>
+                        <button onclick="setPlayerColor('shirt', '#7c3aed', 'Amethyst', this)" class="w-6 h-6 rounded-full bg-violet-600 border border-transparent hover:border-amber-400 transition-transform active:scale-95"></button>
+                        <span id="label-shirt-color" class="text-white text-[10px] font-semibold min-w-[40px] text-right">Ruby</span>
+                    </div>
+                </div>
+
+                <!-- Line 2: Shoes Color -->
+                <div class="flex items-center justify-between text-xs border-t border-amber-500/10 pt-2.5">
+                    <span class="text-amber-500/80 font-bold uppercase tracking-wider">Royal Juttis</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="setPlayerColor('shoes', '#eab308', 'Gold', this)" class="w-6 h-6 rounded-full bg-yellow-500 border-2 border-amber-400 ring-2 ring-amber-500/30 transition-transform active:scale-95"></button>
+                        <button onclick="setPlayerColor('shoes', '#78350f', 'Bronze', this)" class="w-6 h-6 rounded-full bg-amber-900 border border-transparent hover:border-amber-400 transition-transform active:scale-95"></button>
+                        <button onclick="setPlayerColor('shoes', '#ffffff', 'Ivory', this)" class="w-6 h-6 rounded-full bg-white border border-transparent hover:border-amber-400 transition-transform active:scale-95"></button>
+                        <button onclick="setPlayerColor('shoes', '#1c1917', 'Obsidian', this)" class="w-6 h-6 rounded-full bg-stone-900 border border-transparent hover:border-amber-400 transition-transform active:scale-95"></button>
+                        <span id="label-shoes-color" class="text-white text-[10px] font-semibold min-w-[40px] text-right">Gold</span>
+                    </div>
+                </div>
+
+                <!-- Line 3: Skin Tone & Sound -->
+                <div class="flex items-center justify-between text-xs border-t border-amber-500/10 pt-2.5">
+                    <span class="text-amber-500/80 font-bold uppercase tracking-wider">Skin & SFX</span>
+                    <div class="flex items-center gap-3">
+                        <div class="flex gap-1.5">
+                            <button onclick="setPlayerColor('skin', '#ffdbac', 'Light', this)" class="w-5 h-5 rounded-full bg-[#ffdbac] border border-transparent hover:border-amber-400 transition-transform active:scale-95"></button>
+                            <button onclick="setPlayerColor('skin', '#f1c27d', 'Fair', this)" class="w-5 h-5 rounded-full bg-[#f1c27d] border border-transparent hover:border-amber-400 transition-transform active:scale-95"></button>
+                            <button onclick="setPlayerColor('skin', '#e0ac69', 'Tan', this)" class="w-5 h-5 rounded-full bg-[#e0ac69] border-2 border-amber-400 ring-2 ring-amber-500/30 transition-transform active:scale-95"></button>
+                            <button onclick="setPlayerColor('skin', '#8d5524', 'Dark', this)" class="w-5 h-5 rounded-full bg-[#8d5524] border border-transparent hover:border-amber-400 transition-transform active:scale-95"></button>
+                        </div>
+                        <div class="h-4 w-[1px] bg-amber-500/20"></div>
+                        <button id="btn-sound" class="text-amber-400 hover:text-white font-bold transition-colors flex items-center gap-1">
+                            <span id="sound-icon">🔊</span> <span class="text-[10px] uppercase">ON</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEPARATE CUSTOMIZATION PREVIEW CARD (TOP LEFT ORIGIN) -->
+        <div id="left-preview-card" class="absolute top-16 left-4 w-[90%] max-w-xs bg-stone-950/95 backdrop-blur-xl border border-amber-500/30 rounded-2xl p-4 shadow-2xl z-20 pointer-events-auto opacity-0 scale-95 pointer-events-none transition-all duration-300 transform origin-top-left flex flex-col items-center">
+            <h3 class="orbitron text-amber-400 font-extrabold text-sm uppercase tracking-wider mb-2">ROYAL GUARDIAN</h3>
+            <div class="relative w-28 h-28 bg-stone-900 border border-amber-500/20 rounded-full flex items-center justify-center overflow-hidden mb-3 shadow-inner">
+                <!-- Glowing royal aura -->
+                <div class="absolute inset-0 bg-gradient-to-t from-amber-500/10 to-transparent animate-pulse"></div>
+                <!-- Dynamic SVG avatar that updates dynamically in color! -->
+                <svg id="preview-avatar-svg" viewBox="0 0 100 100" class="w-20 h-20 drop-shadow-[0_4px_6px_rgba(0,0,0,0.6)]">
+                    <!-- Head & Neck -->
+                    <circle cx="50" cy="40" r="16" id="svg-skin" fill="#e0ac69" />
+                    <!-- Crown Turban -->
+                    <path d="M34,35 Q50,15 66,35 Q50,22 34,35" id="svg-turban" fill="#8a6f2d" />
+                    <circle cx="50" cy="22" r="3" fill="#eab308" />
+                    <!-- Royal Robe/Tunic -->
+                    <path d="M30,70 L70,70 L65,48 L35,48 Z" id="svg-shirt" fill="#dc2626" />
+                    <!-- Gold Necklace -->
+                    <path d="M40,48 Q50,56 60,48" stroke="#eab308" stroke-width="2" fill="none" />
+                    <!-- Royal Mustache & Face details -->
+                    <path d="M42,43 Q50,46 58,43 Q50,49 42,43" fill="#1c1917" />
+                    <circle cx="44" cy="38" r="1.5" fill="#1c1917" />
+                    <circle cx="56" cy="38" r="1.5" fill="#1c1917" />
+                </svg>
+            </div>
+            
+            <div class="w-full space-y-2.5 text-xs">
+                <div>
+                    <div class="flex justify-between text-amber-500/70 font-semibold mb-1">
+                        <span>ROYAL AGILITY</span>
+                        <span>98%</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-stone-900 rounded-full overflow-hidden">
+                        <div class="h-full bg-amber-500/80 rounded-full" style="width: 98%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-amber-500/70 font-semibold mb-1">
+                        <span>TEMPLE GRACE</span>
+                        <span>100%</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-stone-900 rounded-full overflow-hidden">
+                        <div class="h-full bg-amber-500/80 rounded-full animate-pulse" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-amber-500/10 mt-3 pt-2.5 w-full text-center">
+                <span class="text-stone-400 font-medium text-[10px] tracking-wider uppercase">Active Configuration</span>
+                <p id="preview-config-desc" class="text-white text-xs font-bold mt-1">Ruby Tunic • Gold Juttis • Tan Skin</p>
+            </div>
+        </div>
+
+        <!-- ACTIVE POWERUPS HUD PROGRESS BARS (Anchored Left) -->
+        <div id="powerup-hud" class="absolute top-24 left-4 flex flex-col gap-2 z-20 pointer-events-none">
+            <!-- Magnet Bar -->
+            <div id="p-hud-magnet" class="hidden flex items-center gap-3 bg-stone-950/90 border border-amber-500/40 p-2 rounded-xl text-white text-xs pointer-events-auto">
+                <span class="text-amber-400 font-bold orbitron text-[10px]">🧲 MAGNET</span>
+                <div class="w-16 h-2 bg-stone-800 rounded-full overflow-hidden">
+                    <div id="p-bar-magnet" class="h-full bg-gradient-to-r from-amber-400 to-yellow-500 w-full transition-all duration-100"></div>
+                </div>
+            </div>
+            <!-- Jetpack Bar -->
+            <div id="p-hud-jetpack" class="hidden flex items-center gap-3 bg-stone-950/90 border border-red-500/40 p-2 rounded-xl text-white text-xs pointer-events-auto">
+                <span class="text-red-400 font-bold orbitron text-[10px]">🚀 JETPACK</span>
+                <div class="w-16 h-2 bg-stone-800 rounded-full overflow-hidden">
+                    <div id="p-bar-jetpack" class="h-full bg-gradient-to-r from-red-500 to-orange-500 w-full transition-all duration-100"></div>
+                </div>
+            </div>
+            <!-- Hoverboard Bar -->
+            <div id="p-hud-hoverboard" class="hidden flex items-center gap-3 bg-stone-950/90 border border-emerald-500/40 p-2 rounded-xl text-white text-xs pointer-events-auto">
+                <span class="text-emerald-400 font-bold orbitron text-[10px]">🛹 HOVERBOARD</span>
+                <div class="w-16 h-2 bg-stone-800 rounded-full overflow-hidden">
+                    <div id="p-bar-hoverboard" class="h-full bg-gradient-to-r from-emerald-500 to-green-500 w-full transition-all duration-100"></div>
+                </div>
+            </div>
+            <!-- Jump Booster Bar -->
+            <div id="p-hud-jumpbooster" class="hidden flex items-center gap-3 bg-stone-950/90 border border-blue-500/40 p-2 rounded-xl text-white text-xs pointer-events-auto">
+                <span class="text-blue-400 font-bold orbitron text-[10px]">👟 SANDALS</span>
+                <div class="w-16 h-2 bg-stone-800 rounded-full overflow-hidden">
+                    <div id="p-bar-jumpbooster" class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 w-full transition-all duration-100"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HUD (Always visible during gameplay) -->
+        <div id="hud" class="flex justify-between items-start p-4 md:p-6 w-full opacity-0 transition-opacity duration-500">
+            <!-- Left Stats: Score & Multiplier -->
+            <div class="flex flex-col gap-2 pointer-events-auto bg-stone-950/80 backdrop-blur-md p-3 rounded-xl border border-amber-500/30 text-white min-w-[120px]">
+                <div class="text-xs uppercase tracking-wider text-amber-400 font-bold">Dynasty Score</div>
+                <div id="hud-score" class="text-2xl md:text-3xl font-black orbitron text-white">000000</div>
+                <div class="text-[10px] text-amber-300 flex items-center gap-1 font-bold">
+                    <span>COVENANT</span>
+                    <span id="hud-multiplier" class="bg-amber-500 text-black px-1.5 py-0.2 rounded-full font-black">x1</span>
+                </div>
+            </div>
+
+            <!-- Center Alerts/Notifications -->
+            <div id="game-alert" class="hidden text-center scale-90 transition-all duration-300 pointer-events-none">
+                <div class="bg-gradient-to-r from-amber-500 to-yellow-600 text-white font-black px-6 py-2 rounded-full orbitron text-lg md:text-xl shadow-lg shadow-amber-500/30 animate-pulse">
+                    UNSTOPPABLE!
+                </div>
+            </div>
+
+            <!-- Right Stats: Coins -->
+            <div class="flex flex-col gap-2 pointer-events-auto bg-stone-950/80 backdrop-blur-md p-3 rounded-xl border border-amber-500/30 text-white min-w-[120px] items-end">
+                <div class="text-xs uppercase tracking-wider text-yellow-400 font-bold">Dynasty Gold</div>
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-amber-400 animate-bounce" fill="currentColor" viewBox="0 0 20 20"><path d="M8.433 7.418c.554-.589 1.448-.589 2.002 0l.207.22 1.255-.819-.207-.22a3.5 3.5 0 00-4.904 0l-4.132 4.39a3.5 3.5 0 000 4.904l.207.22 1.255-.819-.207-.22a1.5 1.5 0 010-2.102l4.132-4.39z"></path><path d="M11.567 12.582c-.554.589-1.448.589-2.002 0l-.207-.22-1.255.819.207.22a3.5 3.5 0 004.904 0l4.132-4.39a3.5 3.5 0 000-4.904l-.207-.22-1.255.819.207.22a1.5 1.5 0 010 2.102l-4.132 4.39z"></path></svg>
+                    <span id="hud-coins" class="text-2xl md:text-3xl font-black orbitron text-yellow-400 font-bold">0</span>
+                </div>
+                <div class="text-[10px] text-gray-400 font-bold">ROYAL HIGH: <span id="hud-highscore" class="text-white">0</span></div>
+            </div>
+        </div>
+
+        <!-- MAIN MENU / HERO PANEL (Start Page with prominent Run & Preview actions) -->
+        <div id="main-menu" class="absolute inset-0 flex flex-col justify-end items-center p-8 bg-gradient-to-t from-black/95 via-black/40 to-transparent pointer-events-none transition-opacity duration-500 z-10">
+            
+            <!-- Center Hero Banner -->
+            <div class="flex flex-col items-center text-center mb-6 max-w-lg mt-8 md:mt-0">
+                <div class="bg-amber-600/30 border border-amber-500/60 text-amber-400 px-4 py-1 rounded-md text-xs font-bold uppercase tracking-widest mb-3 orbitron">
+                    Endless Temple Odyssey
+                </div>
+                <h1 class="text-6xl md:text-8xl font-black tracking-tight uppercase leading-none orbitron text-transparent bg-clip-text bg-gradient-to-r from-amber-500 via-orange-400 to-yellow-500 drop-shadow-2xl">
+                    RUN RAJA RUN
+                </h1>
+                <p class="text-stone-300 mt-2 text-sm md:text-base max-w-md font-medium">
+                    Guide the Indian King through ancient temple ruins, dodge colossal rolling ratha chariots, jump over sacred rotating barriers, and harvest high-energy coins!
+                </p>
+            </div>
+
+            <!-- Primary Actions Center Block -->
+            <div class="w-full max-w-md pointer-events-auto space-y-3 mb-12">
+                <button id="btn-play" class="w-full bg-gradient-to-r from-amber-500 via-orange-600 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-extrabold text-xl py-4 rounded-xl orbitron tracking-wider transition-all transform hover:scale-[1.02] active:scale-95 neon-shadow-amber uppercase border border-amber-400/40">
+                    START MAJESTIC RUN 👑
+                </button>
+
+                <button id="btn-preview" class="w-full bg-stone-900/80 hover:bg-amber-500/10 text-amber-400 border border-amber-500/40 hover:border-amber-400 font-extrabold text-xs py-3.5 rounded-xl orbitron tracking-widest transition-all transform hover:scale-[1.02] active:scale-95 uppercase flex items-center justify-center gap-2">
+                    <span>🎬 PREVIEW: TEMPLE SWEEP</span>
+                </button>
+
+                <button id="btn-info" class="w-full bg-stone-950/90 hover:bg-amber-500/10 text-amber-500/80 hover:text-amber-400 border border-amber-500/20 hover:border-amber-500/40 font-extrabold text-xs py-3 rounded-xl orbitron tracking-widest transition-all transform hover:scale-[1.02] active:scale-95 uppercase flex items-center justify-center gap-2">
+                    <span>ℹ️ STUDIO CREDITS: RAVITEJA TECH</span>
+                </button>
+            </div>
+
+            <!-- Navigation help helper lines & Copyright -->
+            <div class="mb-4 flex flex-col items-center gap-2 text-[10px] text-gray-500 tracking-wide select-none">
+                <span>Keyboard: <kbd class="px-1 bg-white/5 rounded border border-white/10">AWSD</kbd> or Swipes to dodge</span>
+                <span class="text-amber-500/50 font-bold tracking-[0.2em] orbitron text-[9px] uppercase">Copyright © 2026 by Raviteja Dadi</span>
+            </div>
+        </div>
+
+        <!-- 3-2-1 COUNTDOWN OVERLAY -->
+        <div id="countdown-screen" class="hidden absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-30 transition-opacity duration-300 opacity-0">
+            <div id="countdown-number" class="text-9xl font-black text-amber-500 orbitron animate-ping">3</div>
+        </div>
+
+        <!-- GAME OVER PANEL -->
+        <div id="game-over-screen" class="hidden absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col justify-center items-center p-6 text-center z-40 transition-opacity duration-500 pointer-events-auto opacity-0">
+            <div class="max-w-md w-full border border-amber-500/30 bg-stone-950 rounded-2xl p-8 shadow-2xl shadow-amber-500/10">
+                <div class="w-20 h-20 mx-auto rounded-full bg-pink-600/20 border-2 border-pink-500 flex items-center justify-center mb-4 text-pink-500 text-4xl animate-bounce">
+                    💀
+                </div>
+                <h2 class="text-4xl md:text-5xl font-black orbitron uppercase text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-red-500">
+                    SACKED
+                </h2>
+                <p class="text-stone-400 mt-2 text-sm uppercase tracking-wider">The ancient temple guardian claimed your run!</p>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 gap-4 my-6">
+                    <div class="bg-white/5 border border-white/10 p-4 rounded-xl">
+                        <span class="block text-xs text-gray-400 uppercase font-bold tracking-wider">Final Score</span>
+                        <span id="go-score" class="text-2xl md:text-3xl font-black orbitron text-white">0</span>
+                    </div>
+                    <div class="bg-white/5 border border-white/10 p-4 rounded-xl">
+                        <span class="block text-xs text-gray-400 uppercase font-bold tracking-wider">Gold Reclaimed</span>
+                        <span id="go-coins" class="text-2xl md:text-3xl font-black orbitron text-yellow-400">0</span>
+                    </div>
+                </div>
+
+                <div id="new-high-score-tag" class="hidden mb-4 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-extrabold py-1.5 px-4 rounded-full orbitron text-sm shadow-md animate-pulse uppercase">
+                    🏆 New Royal Record!
+                </div>
+
+                <!-- Action buttons -->
+                <div class="flex flex-col gap-3">
+                    <button id="btn-restart" class="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-extrabold text-lg py-3.5 rounded-xl orbitron tracking-wider transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-pink-500/20 uppercase">
+                        RUN AGAIN 👑
+                    </button>
+                    <button id="btn-menu" class="w-full bg-white/5 hover:bg-white/10 text-white border border-white/20 font-bold text-sm py-2.5 rounded-lg transition-colors uppercase tracking-wider">
+                        Back to Turban Customizer
+                    </button>
+                </div>
+                <div class="w-full text-center mt-6 pt-4 border-t border-white/5 text-[9px] text-stone-600 tracking-widest orbitron uppercase select-none">
+                    Copyright © 2026 by Raviteja Dadi
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER SWIPE CONTROLS INDICATOR FOR TOUCH DEVICES -->
+        <div class="w-full text-center py-4 text-xs text-gray-500 select-none hidden md:block">
+            Controls: Left/Right Arrow or A/D to steer | Up Arrow or W to Jump | Down Arrow or S to Slide
+        </div>
+        <div class="w-full text-center py-4 text-xs text-gray-400 select-none md:hidden px-6">
+            Swipe LEFT/RIGHT to steer • Swipe UP to JUMP • Swipe DOWN to SLIDE
+        </div>
+    </div>
+
+    <!-- TOUCH JOYSTICK GRAPHICAL FEEDBACK LAYER -->
+    <div id="touch-tracker" class="touch-indicator absolute w-16 h-16 rounded-full border-2 border-amber-500/50 bg-amber-500/10 hidden items-center justify-center z-0 pointer-events-none">
+        <div class="w-4 h-4 rounded-full bg-amber-500"></div>
+    </div>
+
+    <!-- MAIN GAME CANVAS -->
+    <canvas id="gameCanvas" class="absolute inset-0 w-full h-full z-0"></canvas>
+
+    <!-- STUDIO INFO MODAL PANEL -->
+    <div id="info-modal" class="hidden absolute inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-auto">
+        <div class="max-w-lg w-[90%] border border-amber-500/40 bg-stone-950/95 rounded-2xl p-6 md:p-8 shadow-2xl shadow-amber-500/10 transform scale-95 transition-transform duration-300">
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <span class="text-amber-500 font-extrabold uppercase tracking-[0.25em] text-[10px] orbitron mb-1 block">STUDIO PORTFOLIO</span>
+                <h3 class="text-3xl font-black orbitron uppercase tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 drop-shadow-[0_0_15px_rgba(234,179,8,0.3)]">
+                    RAVITEJA TECHNOLOGIES
+                </h3>
+                <div class="w-16 h-[1.5px] bg-amber-500/40 mx-auto mt-3"></div>
+            </div>
+
+            <!-- Content Details -->
+            <div class="space-y-4 text-stone-300 text-xs md:text-sm leading-relaxed max-h-[350px] overflow-y-auto pr-2">
+                <p class="text-center text-stone-400 italic">
+                    "Pioneering next-generation, high-fidelity immersive web platforms, intelligent applications, and advanced browser-side systems."
+                </p>
+                
+                <div class="border-t border-amber-500/10 pt-3 space-y-4">
+                    <!-- Tech Division 1 -->
+                    <div class="flex gap-3">
+                        <span class="text-amber-400 font-bold text-sm">🌐</span>
+                        <div>
+                            <strong class="text-white uppercase font-bold text-[11px] orbitron tracking-wider block">Enterprise Software Engineering</strong>
+                            Headquartered at the forefront of modern software design, Raviteja Technologies specializes in crafting real-time interactive apps, media platforms, and frame-rate independent cloud dashboards built for locked speed.
+                        </div>
+                    </div>
+                    
+                    <!-- Tech Division 2 -->
+                    <div class="flex gap-3">
+                        <span class="text-amber-400 font-bold text-sm">💎</span>
+                        <div>
+                            <strong class="text-white uppercase font-bold text-[11px] orbitron tracking-wider block">Immersive WebGL & WebGPU Systems</strong>
+                            Engineered on native WebGL 2.0 and Three.js with robust garbage-collection-free memory structures, custom vertex/fragment shader networks, and GPU instanced rendering pipelines that lock 60+ FPS on standard mobile and desktop displays.
+                        </div>
+                    </div>
+                    
+                    <!-- Tech Division 3 -->
+                    <div class="flex gap-3">
+                        <span class="text-amber-400 font-bold text-sm">🔊</span>
+                        <div>
+                            <strong class="text-white uppercase font-bold text-[11px] orbitron tracking-wider block">Procedural Chiptune Synthesis</strong>
+                            Pioneers in high-fidelity audio synthesis, creating native browser-side classical Indian instrumental soundboards and audio engines (utilizing high-Q peaking EQ filters and custom buffer noise gates) playing fully offline.
+                        </div>
+                    </div>
+
+                    <!-- Contact & Brand -->
+                    <div class="border-t border-amber-500/10 pt-3 text-[11px] text-stone-400 space-y-1">
+                        <div class="flex justify-between">
+                            <span class="font-semibold uppercase tracking-wider text-amber-500/80">Chief Architect Team</span>
+                            <span class="text-white">Raviteja Technologies Team</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="font-semibold uppercase tracking-wider text-amber-500/80">Official Portals</span>
+                            <a href="https://ravitejatech.com" target="_blank" class="text-amber-400 hover:text-amber-300 transition-colors underline font-bold">ravitejatech.com</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Action Button -->
+            <div class="mt-6 border-t border-amber-500/10 pt-4">
+                <button id="btn-close-info" class="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-extrabold py-3 rounded-xl orbitron tracking-wider transition-all transform hover:scale-[1.02] active:scale-95 shadow-md uppercase">
+                    RETURN TO COURT 👑
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CORE GAME LOGIC -->
+    <script>
+        // --- CONSTANTS AND GLOBALS (DECLARED FIRST TO PREVENT CRASHES) ---
+        const LANE_WIDTH = 4.0;
+        const NUM_LANES = 3;
+        const SPEED_START = 35.0; // Initial speed
+        const SPEED_MAX = 70.0;
+        const SPEED_ACCEL = 0.4;  // Acceleration rate per second
+        const TRACK_PIECE_LENGTH = 50;
+        const MAX_TRACK_PIECES = 6;
+        const POWERUP_DURATION = 10.0;
+
+        // Game State Constants
+        const STATE_CINEMATIC = 'cinematic';
+        const STATE_COUNTDOWN = 'countdown';
+        const STATE_PLAYING = 'playing';
+        const STATE_CRASHED = 'crashed';
+
+        // Obstacle & Powerup Types
+        const obstacleTypes = {
+            BARRIER_LOW: 'barrier_low',  // Fallen Stone Pillar
+            BARRIER_SPIKES: 'barrier_spikes', // Spinning Spiked Log (Dynamic jumping obstacle)
+            TRAIN: 'train',               // Massive Temple Chariot (Ratha)
+            TRAIN_RAMPED: 'train_ramped', // Stepped shrine pyramid
+            BARRIER_JUMPING: 'barrier_jumping' // Golden Solar Chakra
+        };
+
+        const powerupTypes = {
+            MAGNET: 'magnet',
+            JETPACK: 'jetpack',
+            HOVERBOARD: 'hoverboard',
+            JUMP_BOOSTER: 'jumpbooster'
+        };
+
+        // Game State Variables
+        let gameState = STATE_CINEMATIC;
+        let cinematicMode = 0; // 0 = Sweep, 1 = Sky Crane, 2 = Rail Tracker
+        let score = 0;
+        let multiplier = 1;
+        let coins = 0;
+        let highscore = parseInt(localStorage.getItem('runrajarun_highscore') || '0');
+        let speed = SPEED_START;
+        let distanceTraveled = 0;
+        let activeLane = 1;
+        let lastObstacleZ = -40; // Track the Z position of the last spawned obstacle row
+
+        // Customizer selections (Ruby Red Tunic, Gold Juttis, Tan skin)
+        let playerColors = {
+            shirt: '#dc2626',
+            shoes: '#eab308',
+            skin: '#e0ac69'
+        };
+
+        // Powerups timers & active state variables
+        let isMagnetActive = false;
+        let isJetpackActive = false;
+        let isHoverboardActive = false;
+        let isJumpBoosterActive = false;
+        let isInvincible = false;
+        let invincibilityTimer = 0;
+
+        let magnetTimeLeft = 0;
+        let jetpackTimeLeft = 0;
+        let hoverboardTimeLeft = 0;
+        let jumpBoosterTimeLeft = 0;
+        let lastSkyCoinSpawnZ = 0;
+
+        // Lists tracking elements that require animation updates
+        const blinkingLights = [];
+        const rotatingBeacons = [];
+
+        // --- HIGH-FIDELITY WEB AUDIO API PROCEDURAL SFX SYNTHESIZER ENGINE ---
+        let soundEnabled = true;
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        const audio = {
+            playCoin: () => {
+                if (!soundEnabled) return;
+                try {
+                    const ctx = getAudioContext();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    const now = ctx.currentTime;
+                    // Double pitch arcade chime effect
+                    osc.frequency.setValueAtTime(987.77, now); // B5 note
+                    osc.frequency.setValueAtTime(1318.51, now + 0.08); // E6 note
+                    
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+                    
+                    osc.start(now);
+                    osc.stop(now + 0.28);
+                } catch(e) {
+                    console.log("SFX blocked or failed:", e);
+                }
+            },
+            playJump: () => {
+                if (!soundEnabled) return;
+                try {
+                    const ctx = getAudioContext();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc.type = 'triangle';
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    const now = ctx.currentTime;
+                    // Quick springy pitch sweep
+                    osc.frequency.setValueAtTime(180, now);
+                    osc.frequency.exponentialRampToValueAtTime(850, now + 0.16);
+                    
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.linearRampToValueAtTime(0.001, now + 0.18);
+                    
+                    osc.start(now);
+                    osc.stop(now + 0.18);
+                } catch(e) {
+                    console.log("SFX blocked or failed:", e);
+                }
+            },
+            playSlide: () => {
+                if (!soundEnabled) return;
+                try {
+                    const ctx = getAudioContext();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc.type = 'triangle';
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    const now = ctx.currentTime;
+                    // Swishing slide downward pitch sweep
+                    osc.frequency.setValueAtTime(550, now);
+                    osc.frequency.exponentialRampToValueAtTime(180, now + 0.22);
+                    
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0.001, now + 0.24);
+                    
+                    osc.start(now);
+                    osc.stop(now + 0.24);
+                } catch(e) {
+                    console.log("SFX blocked or failed:", e);
+                }
+            },
+            playPowerup: () => {
+                if (!soundEnabled) return;
+                try {
+                    const ctx = getAudioContext();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc.type = 'square'; // chiptune feel
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    const now = ctx.currentTime;
+                    // Sparkly rising arpeggio C5 -> E5 -> G5 -> C6
+                    osc.frequency.setValueAtTime(523.25, now); 
+                    osc.frequency.setValueAtTime(659.25, now + 0.08); 
+                    osc.frequency.setValueAtTime(783.99, now + 0.16); 
+                    osc.frequency.setValueAtTime(1046.50, now + 0.24); 
+                    
+                    gain.gain.setValueAtTime(0.06, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+                    
+                    osc.start(now);
+                    osc.stop(now + 0.45);
+                } catch(e) {
+                    console.log("SFX blocked or failed:", e);
+                }
+            },
+            playCrash: () => {
+                if (!soundEnabled) return;
+                try {
+                    const ctx = getAudioContext();
+                    // Generate brown noise / boom crash using low-pass resonance sweep
+                    const bufferSize = ctx.sampleRate * 0.4;
+                    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    // Fill with noise
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = Math.random() * 2 - 1;
+                    }
+                    
+                    const noiseNode = ctx.createBufferSource();
+                    noiseNode.buffer = buffer;
+                    
+                    const filter = ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    
+                    const gain = ctx.createGain();
+                    
+                    noiseNode.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    const now = ctx.currentTime;
+                    filter.frequency.setValueAtTime(350, now);
+                    filter.frequency.exponentialRampToValueAtTime(30, now + 0.4);
+                    
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                    
+                    noiseNode.start(now);
+                    noiseNode.stop(now + 0.4);
+                } catch(e) {
+                    console.log("SFX blocked or failed:", e);
+                }
+            }
+        };
+
+        // --- HYPNOTIC INSTRUMENTAL CLASSICAL INDIAN TEMPLE MUSIC SYNTHESIZER ---
+        let musicPlaying = false;
+        let musicTimer = null;
+        let droneNode1 = null, droneNode2 = null, droneGain = null;
+        let melodyGain = null;
+
+        const ragaNotes = [
+            130.81, // C3
+            138.59, // Db3
+            164.81, // E3
+            174.61, // F3
+            196.00, // G3
+            207.65, // Ab3
+            246.94, // B3
+            261.63, // C4
+            277.18, // Db4
+            329.63, // E4
+            349.23, // F4
+            392.00  // G4
+        ];
+
+        let melodySequence = [0, 2, 4, 3, 2, 4, 6, 7, 6, 4, 2, 1, 0];
+        let melodyStep = 0;
+
+        function startInstrumentalMusic() {
+            if (!soundEnabled || musicPlaying) return;
+            try {
+                const ctx = getAudioContext();
+                
+                // 1. Create a rich Tanpura drone base (triangle/saw harmonics)
+                droneGain = ctx.createGain();
+                droneGain.gain.setValueAtTime(0.012, ctx.currentTime);
+                droneGain.connect(ctx.destination);
+                
+                // Drone Osc 1: Root C3
+                droneNode1 = ctx.createOscillator();
+                droneNode1.type = 'triangle';
+                droneNode1.frequency.setValueAtTime(130.81, ctx.currentTime);
+                
+                // Filter to make it smooth and warm
+                const droneFilter = ctx.createBiquadFilter();
+                droneFilter.type = 'lowpass';
+                droneFilter.frequency.setValueAtTime(250, ctx.currentTime);
+                
+                droneNode1.connect(droneFilter);
+                droneFilter.connect(droneGain);
+                droneNode1.start();
+                
+                // Drone Osc 2: Fifth G3
+                droneNode2 = ctx.createOscillator();
+                droneNode2.type = 'triangle';
+                droneNode2.frequency.setValueAtTime(196.00, ctx.currentTime);
+                droneNode2.connect(droneFilter);
+                droneNode2.start();
+
+                // 2. Plucked Raga Sitar arpeggiator gain node
+                melodyGain = ctx.createGain();
+                melodyGain.gain.setValueAtTime(1.0, ctx.currentTime);
+                melodyGain.connect(ctx.destination);
+
+                musicPlaying = true;
+                
+                // 3. Arpeggiate melodic notes in Bhairav Raga scale
+                const playStep = () => {
+                    if (!musicPlaying || !soundEnabled) return;
+                    
+                    const now = ctx.currentTime;
+                    const osc = ctx.createOscillator();
+                    const noteGain = ctx.createGain();
+                    const filter = ctx.createBiquadFilter();
+                    
+                    // Sitar synthesis using a sawtooth/triangle hybrid mix and highly resonant filter pluck
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(ragaNotes[melodySequence[melodyStep]], now);
+                    
+                    // Sitar high resonant body tone pluck
+                    filter.type = 'peaking';
+                    filter.Q.setValueAtTime(7, now);
+                    filter.frequency.setValueAtTime(550, now);
+                    filter.frequency.exponentialRampToValueAtTime(1100, now + 0.12);
+                    
+                    noteGain.gain.setValueAtTime(0.0, now);
+                    noteGain.gain.linearRampToValueAtTime(0.035, now + 0.02); // quick pluck attack
+                    noteGain.gain.exponentialRampToValueAtTime(0.001, now + 0.65); // long resonance ring
+                    
+                    osc.connect(filter);
+                    filter.connect(noteGain);
+                    noteGain.connect(melodyGain);
+                    
+                    osc.start(now);
+                    osc.stop(now + 0.7);
+                    
+                    // Progress melody steps
+                    melodyStep = (melodyStep + 1) % melodySequence.length;
+                    
+                    // Speed up music dynamic tempo based on current runner speed!
+                    let tempo = gameState === STATE_PLAYING ? Math.max(220, 420 - (speed * 6)) : 450;
+                    musicTimer = setTimeout(playStep, tempo);
+                };
+                
+                playStep();
+            } catch(e) {
+                console.log("Music synthesis failed:", e);
+            }
+        }
+
+        function stopInstrumentalMusic() {
+            musicPlaying = false;
+            if (musicTimer) clearTimeout(musicTimer);
+            try {
+                if (droneNode1) { droneNode1.stop(); droneNode1 = null; }
+                if (droneNode2) { droneNode2.stop(); droneNode2 = null; }
+                if (droneGain) { droneGain.disconnect(); droneGain = null; }
+                if (melodyGain) { melodyGain.disconnect(); melodyGain = null; }
+            } catch(e) {
+                console.log("Music stop failed:", e);
+            }
+        }
+
+        // Helper to get lane X position
+        function getLaneX(laneIndex) {
+            // lanes: 0 (left), 1 (center), 2 (right)
+            return (laneIndex - 1) * LANE_WIDTH;
+        }
+
+        // DOM elements
+        const hudElement = document.getElementById('hud');
+        const scoreVal = document.getElementById('hud-score');
+        const multiplierVal = document.getElementById('hud-multiplier');
+        const coinsVal = document.getElementById('hud-coins');
+        const highscoreVal = document.getElementById('hud-highscore');
+        const alertElement = document.getElementById('game-alert');
+        const mainPanel = document.getElementById('main-menu');
+        const topCustomizer = document.getElementById('top-customizer');
+        const btnToggleCustomizer = document.getElementById('btn-toggle-customizer');
+        const leftPreviewCard = document.getElementById('left-preview-card');
+        const playBtn = document.getElementById('btn-play');
+        const previewBtn = document.getElementById('btn-preview');
+        const restartBtn = document.getElementById('btn-restart');
+        const menuBtn = document.getElementById('btn-menu');
+        const infoBtn = document.getElementById('btn-info');
+        const infoCloseBtn = document.getElementById('btn-close-info');
+        const infoModal = document.getElementById('info-modal');
+        const countdownScreen = document.getElementById('countdown-screen');
+        const countdownNum = document.getElementById('countdown-number');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const goScore = document.getElementById('go-score');
+        const goCoins = document.getElementById('go-coins');
+        const newHighScoreTag = document.getElementById('new-high-score-tag');
+
+        highscoreVal.textContent = highscore;
+
+        // --- THREE.JS INITIALIZATION ---
+        const canvas = document.getElementById('gameCanvas');
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+        const scene = new THREE.Scene();
+        // Warm mystical sunset over ruins color theme (Amber & Deep Earth)
+        scene.background = new THREE.Color(0x180c03);
+        scene.fog = new THREE.FogExp2(0x180c03, 0.008);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // --- STYLED SYSTEM GEOMETRIES & SHARED ACCENT MATERIALS ---
+        const stoneMat = new THREE.MeshStandardMaterial({ color: 0x3a2d26, roughness: 0.95 }); // Sandstone
+        const darkBasaltMat = new THREE.MeshStandardMaterial({ color: 0x141211, roughness: 0.85, metalness: 0.2 }); // Dark obsidian/basalt
+        const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x1d120a, roughness: 0.9 }); // Dark ancient ebony teak
+        const agedBronzeMat = new THREE.MeshStandardMaterial({ color: 0x423528, metalness: 0.8, roughness: 0.5 }); // Dark oxidized bronze
+        const darkGoldMat = new THREE.MeshStandardMaterial({ color: 0x8a6f2d, metalness: 0.85, roughness: 0.25 }); // Antique Gold
+
+        // --- INITIALIZE GROUPS ---
+        const menuRuinsGroup = new THREE.Group();
+        scene.add(menuRuinsGroup);
+
+        const trackPiecesGroup = new THREE.Group();
+        scene.add(trackPiecesGroup);
+
+        const obstaclesGroup = new THREE.Group();
+        scene.add(obstaclesGroup);
+
+        const coinsGroup = new THREE.Group();
+        scene.add(coinsGroup);
+
+        const powerupsGroup = new THREE.Group();
+        scene.add(powerupsGroup);
+
+        const particlesGroup = new THREE.Group();
+        scene.add(particlesGroup);
+
+        // --- LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0x2c1b10, 1.2);
+        scene.add(ambientLight);
+
+        // Warm setting sun / Golden hour sunlight
+        const sunLight = new THREE.DirectionalLight(0xfca311, 2.2);
+        sunLight.position.set(20, 45, -20);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 1024;
+        sunLight.shadow.mapSize.height = 1024;
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 150;
+        const d = 30;
+        sunLight.shadow.camera.left = -d;
+        sunLight.shadow.camera.right = d;
+        sunLight.shadow.camera.top = d;
+        sunLight.shadow.camera.bottom = -d;
+        scene.add(sunLight);
+
+        // Sunset crimson ambient filler light
+        const neonLight = new THREE.DirectionalLight(0xe65c00, 1.5);
+        neonLight.position.set(-20, 25, 40);
+        scene.add(neonLight);
+
+        // --- BUILD MENU SACRED TEMPLES & PREVIEW COURTYARD ---
+        function buildMenuRuins() {
+            // 1. Sandstone Court Floor Tile (Under Raja preview showcase)
+            const platformGeo = new THREE.CylinderGeometry(2.4, 2.5, 0.4, 16);
+            const platform = new THREE.Mesh(platformGeo, stoneMat);
+            platform.position.set(0, -1.35, -6);
+            platform.receiveShadow = true;
+            menuRuinsGroup.add(platform);
+
+            // Gold ring trim around preview platform
+            const platformRing = new THREE.Mesh(new THREE.TorusGeometry(2.42, 0.08, 8, 24), darkGoldMat);
+            platformRing.rotation.x = Math.PI / 2;
+            platformRing.position.set(0, -1.16, -6);
+            menuRuinsGroup.add(platformRing);
+
+            // 2. Majestic Carved Backdrop Temple Wall (Sandstone ruins behind)
+            const backWallGeo = new THREE.BoxGeometry(6.5, 5.0, 0.4);
+            const backWall = new THREE.Mesh(backWallGeo, stoneMat);
+            backWall.position.set(0, 1.3, -9.0);
+            backWall.castShadow = true;
+            backWall.receiveShadow = true;
+            menuRuinsGroup.add(backWall);
+
+            // Carved Sandstone Arch Framing
+            const archFrame = new THREE.Mesh(new THREE.TorusGeometry(2.0, 0.2, 8, 24, Math.PI), stoneMat);
+            archFrame.position.set(0, 1.8, -8.7);
+            menuRuinsGroup.add(archFrame);
+
+            // Hanging Brass Temple Bell (Ganta) inside Archway
+            const chainGeo = new THREE.CylinderGeometry(0.02, 0.02, 1.4);
+            const chain = new THREE.Mesh(chainGeo, darkGoldMat);
+            chain.position.set(0, 2.7, -8.3);
+            menuRuinsGroup.add(chain);
+
+            const bellGeo = new THREE.ConeGeometry(0.3, 0.45, 12);
+            const bell = new THREE.Mesh(bellGeo, darkGoldMat);
+            bell.position.set(0, 1.9, -8.3);
+            bell.castShadow = true;
+            menuRuinsGroup.add(bell);
+
+            // 3. Flanking Royal Stone Columns
+            const columnGeo = new THREE.CylinderGeometry(0.3, 0.4, 4.8, 8);
+            const columnL = new THREE.Mesh(columnGeo, stoneMat);
+            columnL.position.set(-2.8, 1.0, -6.5);
+            columnL.castShadow = true;
+            menuRuinsGroup.add(columnL);
+
+            const columnR = columnL.clone();
+            columnR.position.x = 2.8;
+            menuRuinsGroup.add(columnR);
+
+            // 4. Pedestal Fire Basins (Diyas) illuminating Raja showcase
+            for (let side = -1; side <= 1; side += 2) {
+                if (side === 0) continue;
+                
+                const firePed = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 1.0, 8), stoneMat);
+                firePed.position.set(side * 1.8, -0.7, -4.5);
+                firePed.castShadow = true;
+                menuRuinsGroup.add(firePed);
+
+                const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.15, 0.25, 12), darkGoldMat);
+                bowl.position.set(side * 1.8, -0.1, -4.5);
+                menuRuinsGroup.add(bowl);
+
+                // Point Light source casting soft orange flicker on Raja
+                const fireLight = new THREE.PointLight(0xff5000, 2.5, 8.0, 1.2);
+                fireLight.position.set(side * 1.8, 0.2, -4.5);
+                menuRuinsGroup.add(fireLight);
+                blinkingLights.push(fireLight);
+
+                // Volumetric Flame representation cone
+                const flame = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 8), new THREE.MeshBasicMaterial({
+                    color: 0xff3700,
+                    transparent: true,
+                    opacity: 0.8,
+                    blending: THREE.AdditiveBlending
+                }));
+                flame.position.set(side * 1.8, 0.25, -4.5);
+                menuRuinsGroup.add(flame);
+                blinkingLights.push(flame);
+            }
+        }
+
+        buildMenuRuins();
+
+        // Procedural Carved Temple Stone Flagstone Texture using internal Canvas
+        function createBallastTexture() {
+            const canvasTex = document.createElement('canvas');
+            canvasTex.width = 256;
+            canvasTex.height = 256;
+            const ctx = canvasTex.getContext('2d');
+            
+            // Warm Sandstone base
+            ctx.fillStyle = '#2f1a10';
+            ctx.fillRect(0, 0, 256, 256);
+            
+            // Draw stone joints / bricks
+            ctx.strokeStyle = '#180c03';
+            ctx.lineWidth = 3;
+            
+            const rows = 8;
+            const cols = 4;
+            const rH = 256 / rows;
+            const cW = 256 / cols;
+            
+            for (let r = 0; r < rows; r++) {
+                const y = r * rH;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(256, y);
+                ctx.stroke();
+                
+                const shift = (r % 2) * (cW / 2);
+                for (let c = 0; c <= cols + 1; c++) {
+                    const x = c * cW - shift;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x, y + rH);
+                    ctx.stroke();
+                }
+            }
+            
+            // Moss spots, dirt, and sandy grain noise
+            for (let i = 0; i < 600; i++) {
+                const x = Math.random() * 256;
+                const y = Math.random() * 256;
+                const size = Math.random() * 3.5 + 1;
+                
+                if (Math.random() < 0.2) {
+                    ctx.fillStyle = `rgba(${Math.floor(Math.random()*40 + 30)}, ${Math.floor(Math.random()*60 + 60)}, 20, 0.45)`;
+                } else {
+                    const sand = Math.floor(Math.random() * 40 + 60);
+                    ctx.fillStyle = `rgba(${sand + 30}, ${sand + 10}, ${sand}, 0.25)`;
+                }
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            const tex = new THREE.CanvasTexture(canvasTex);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(1, 1);
+            return tex;
+        }
+
+        const ballastTexture = createBallastTexture();
+
+        // Single track segment generation
+        function createTrackPiece(zOffset) {
+            const group = new THREE.Group();
+            group.position.z = zOffset;
+
+            const groundGeo = new THREE.PlaneGeometry(32, TRACK_PIECE_LENGTH);
+            const groundMat = new THREE.MeshStandardMaterial({
+                map: ballastTexture,
+                roughness: 0.95,
+                metalness: 0.05
+            });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            group.add(ground);
+
+            for (let l = 0; l < NUM_LANES; l++) {
+                const laneX = getLaneX(l);
+
+                const dividersSpacing = 5;
+                for (let s = -TRACK_PIECE_LENGTH / 2; s < TRACK_PIECE_LENGTH / 2; s += dividersSpacing) {
+                    const blockGeo = new THREE.BoxGeometry(3.2, 0.12, 1.2);
+                    const block = new THREE.Mesh(blockGeo, stoneMat);
+                    block.position.set(laneX, 0.04, s);
+                    block.receiveShadow = true;
+                    group.add(block);
+                }
+
+                const trimGeo = new THREE.BoxGeometry(0.12, 0.15, TRACK_PIECE_LENGTH);
+                const leftTrim = new THREE.Mesh(trimGeo, darkGoldMat);
+                leftTrim.position.set(laneX - 1.5, 0.08, 0);
+                leftTrim.receiveShadow = true;
+                group.add(leftTrim);
+
+                const rightTrim = leftTrim.clone();
+                rightTrim.position.x = laneX + 1.5;
+                group.add(rightTrim);
+            }
+
+            if (Math.abs(zOffset) % 100 === 0) {
+                const archGroup = new THREE.Group();
+                archGroup.position.set(0, 0, 0);
+
+                const pillarGeo = new THREE.CylinderGeometry(0.5, 0.7, 12, 8);
+                const leftPillar = new THREE.Mesh(pillarGeo, stoneMat);
+                leftPillar.position.set(-14, 6, 0);
+                leftPillar.castShadow = true;
+                archGroup.add(leftPillar);
+
+                const rightPillar = leftPillar.clone();
+                rightPillar.position.x = 14;
+                archGroup.add(rightPillar);
+
+                const barGeo = new THREE.BoxGeometry(28.4, 0.8, 1.0);
+                const topBar = new THREE.Mesh(barGeo, stoneMat);
+                topBar.position.set(0, 12, 0);
+                topBar.castShadow = true;
+                archGroup.add(topBar);
+
+                const accentGeo = new THREE.BoxGeometry(2.0, 1.0, 1.1);
+                const accentL = new THREE.Mesh(accentGeo, darkGoldMat);
+                accentL.position.set(-10, 12, 0);
+                archGroup.add(accentL);
+
+                const accentR = accentL.clone();
+                accentR.position.x = 10;
+                archGroup.add(accentR);
+
+                group.add(archGroup);
+            }
+
+            for (let side = -1; side <= 1; side += 2) {
+                if (side === 0) continue;
+                
+                const fireColor = 0xff5500;
+                const streetLightGroup = new THREE.Group();
+                streetLightGroup.position.set(side * 10.5, 0, -12);
+
+                const poleGeo = new THREE.CylinderGeometry(0.2, 0.35, 6.0, 8);
+                const pole = new THREE.Mesh(poleGeo, stoneMat);
+                pole.position.y = 3.0;
+                pole.castShadow = true;
+                streetLightGroup.add(pole);
+
+                const armGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.5, 8);
+                armGeo.rotateZ(Math.PI / 2 * -side);
+                const arm = new THREE.Mesh(armGeo, darkGoldMat);
+                arm.position.set(-side * 0.5, 5.5, 0);
+                arm.castShadow = true;
+                streetLightGroup.add(arm);
+
+                const dishGeo = new THREE.CylinderGeometry(0.7, 0.3, 0.4, 12);
+                const dish = new THREE.Mesh(dishGeo, darkGoldMat);
+                dish.position.set(-side * 1.1, 5.7, 0);
+                dish.castShadow = true;
+                streetLightGroup.add(dish);
+
+                const downLight = new THREE.PointLight(fireColor, 3.5, 16.0, 1.5);
+                downLight.position.set(-side * 1.1, 6.1, 0);
+                streetLightGroup.add(downLight);
+                blinkingLights.push(downLight);
+
+                const coneGeo = new THREE.ConeGeometry(0.4, 1.2, 8);
+                const coneMat = new THREE.MeshBasicMaterial({
+                    color: 0xff3700,
+                    transparent: true,
+                    opacity: 0.8,
+                    blending: THREE.AdditiveBlending,
+                    side: THREE.DoubleSide
+                });
+                const flameCone = new THREE.Mesh(coneGeo, coneMat);
+                flameCone.position.set(-side * 1.1, 6.3, 0);
+                streetLightGroup.add(flameCone);
+                blinkingLights.push(flameCone);
+
+                group.add(streetLightGroup);
+            }
+
+            return group;
+        }
+
+        // Prepopulate the track
+        for (let i = 0; i < MAX_TRACK_PIECES; i++) {
+            const z = -i * TRACK_PIECE_LENGTH + (TRACK_PIECE_LENGTH * 2);
+            const trackPiece = createTrackPiece(z);
+            trackPiecesGroup.add(trackPiece);
+        }
+
+        // --- DYNAMIC CHARACTER: MAJESTIC KING (RAJA) ---
+        class PlayerCharacter {
+            constructor() {
+                this.group = new THREE.Group();
+                this.state = 'RUNNING'; // RUNNING, JUMPING, SLIDING, CRASHED, FLYING
+                this.posY = 0;
+                this.velY = 0;
+                this.velZ = 0;
+                this.targetLane = 1;
+                this.currentLaneX = 0;
+                this.slideTimer = 0;
+
+                // Color variables linked to customizer
+                this.shirtHex = playerColors.shirt;
+                this.shoesHex = playerColors.shoes;
+                this.skinHex = playerColors.skin;
+
+                this.buildModel();
+                scene.add(this.group);
+            }
+
+            buildModel() {
+                while(this.group.children.length > 0) { 
+                    this.group.remove(this.group.children[0]); 
+                }
+
+                // Royal Materials
+                const skinMat = new THREE.MeshStandardMaterial({ color: this.skinHex, roughness: 0.6 });
+                const silkTunicMat = new THREE.MeshStandardMaterial({ color: this.shirtHex, roughness: 0.4 });
+                const dhotiPantsMat = new THREE.MeshStandardMaterial({ color: 0x1c1917, roughness: 0.7 });
+                const shoeMat = new THREE.MeshStandardMaterial({ color: this.shoesHex, roughness: 0.4 });
+                const hairMat = new THREE.MeshStandardMaterial({ color: 0x1a1510, roughness: 0.8 });
+                
+                const makePart = (geometry, material, pos, name) => {
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(...pos);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    mesh.name = name;
+                    return mesh;
+                };
+
+                this.bodyContainer = new THREE.Group();
+                this.bodyContainer.position.y = 1.35;
+                this.group.add(this.bodyContainer);
+
+                // Torso
+                this.torso = makePart(new THREE.BoxGeometry(0.8, 1.2, 0.45), silkTunicMat, [0, 0, 0], 'torso');
+                const sashGeo = new THREE.BoxGeometry(0.85, 0.15, 0.5);
+                const sash = makePart(sashGeo, darkGoldMat, [0, -0.2, 0.02], 'sash');
+                this.torso.add(sash);
+                this.bodyContainer.add(this.torso);
+
+                // Head, Beard & Royal Turban (Pagri)
+                this.headGroup = new THREE.Group();
+                this.headGroup.position.set(0, 0.9, 0);
+                
+                const headMesh = makePart(new THREE.SphereGeometry(0.38, 16, 16), skinMat, [0, 0, 0], 'head');
+                this.headGroup.add(headMesh);
+
+                const beardGeo = new THREE.BoxGeometry(0.42, 0.25, 0.25);
+                const beard = makePart(beardGeo, hairMat, [0, -0.2, -0.2], 'beard');
+                this.headGroup.add(beard);
+
+                const turbanGroup = new THREE.Group();
+                const turbanBaseGeo = new THREE.CylinderGeometry(0.48, 0.52, 0.35, 12);
+                const turbanBase = makePart(turbanBaseGeo, silkTunicMat, [0, 0.22, 0], 'turbanBase');
+                turbanBase.rotation.x = 0.1;
+                turbanGroup.add(turbanBase);
+
+                const goldBandGeo = new THREE.TorusGeometry(0.5, 0.05, 8, 24);
+                const goldBand = makePart(goldBandGeo, darkGoldMat, [0, 0.15, 0], 'goldBand');
+                goldBand.rotation.x = Math.PI / 2 + 0.15;
+                turbanGroup.add(goldBand);
+
+                const jewelShieldGeo = new THREE.BoxGeometry(0.12, 0.35, 0.1);
+                const jewelShield = makePart(jewelShieldGeo, darkGoldMat, [0, 0.32, -0.48], 'jewelShield');
+                turbanGroup.add(jewelShield);
+
+                const rubyGeo = new THREE.SphereGeometry(0.06, 6, 6);
+                const rubyMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                const ruby = new THREE.Mesh(rubyGeo, rubyMat);
+                ruby.position.set(0, 0.32, -0.54);
+                turbanGroup.add(ruby);
+
+                const plumeGeo = new THREE.ConeGeometry(0.08, 0.5, 4);
+                const plume = makePart(plumeGeo, darkGoldMat, [0, 0.6, -0.42], 'plume');
+                plume.rotation.x = -0.15;
+                turbanGroup.add(plume);
+
+                this.headGroup.add(turbanGroup);
+                this.bodyContainer.add(this.headGroup);
+
+                // Arms
+                this.leftArmPivot = new THREE.Group();
+                this.leftArmPivot.position.set(-0.55, 0.4, 0);
+                const leftArm = makePart(new THREE.CylinderGeometry(0.12, 0.1, 0.8), silkTunicMat, [0, -0.3, 0], 'leftArm');
+                this.leftArmPivot.add(leftArm);
+                
+                const kadaGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.12, 8);
+                const leftKada = makePart(kadaGeo, darkGoldMat, [0, -0.5, 0], 'leftKada');
+                this.leftArmPivot.add(leftKada);
+
+                const leftHand = makePart(new THREE.SphereGeometry(0.12, 8, 8), skinMat, [0, -0.7, 0], 'leftHand');
+                this.leftArmPivot.add(leftHand);
+                this.bodyContainer.add(this.leftArmPivot);
+
+                this.rightArmPivot = new THREE.Group();
+                this.rightArmPivot.position.set(0.55, 0.4, 0);
+                const rightArm = makePart(new THREE.CylinderGeometry(0.12, 0.1, 0.8), silkTunicMat, [0, -0.3, 0], 'rightArm');
+                this.rightArmPivot.add(rightArm);
+                
+                const rightKada = makePart(kadaGeo, darkGoldMat, [0, -0.5, 0], 'rightKada');
+                this.rightArmPivot.add(rightKada);
+
+                const rightHand = makePart(new THREE.SphereGeometry(0.12, 8, 8), skinMat, [0, -0.7, 0], 'rightHand');
+                this.rightArmPivot.add(rightHand);
+                this.bodyContainer.add(this.rightArmPivot);
+
+                // Legs
+                this.leftLegPivot = new THREE.Group();
+                this.leftLegPivot.position.set(-0.25, -0.6, 0);
+                const leftLeg = makePart(new THREE.CylinderGeometry(0.15, 0.13, 0.9), dhotiPantsMat, [0, -0.35, 0], 'leftLeg');
+                this.leftLegPivot.add(leftLeg);
+
+                const juttiGeo = new THREE.BoxGeometry(0.24, 0.18, 0.5);
+                const leftShoe = makePart(juttiGeo, shoeMat, [0, -0.85, 0.08], 'leftShoe');
+                const curlGeo = new THREE.TorusGeometry(0.08, 0.04, 6, 12, Math.PI);
+                const leftCurl = makePart(curlGeo, darkGoldMat, [0, -0.8, -0.2], 'leftCurl');
+                leftCurl.rotation.y = Math.PI / 2;
+                leftShoe.add(leftCurl);
+                this.leftLegPivot.add(leftShoe);
+                this.bodyContainer.add(this.leftLegPivot);
+
+                this.rightLegPivot = new THREE.Group();
+                this.rightLegPivot.position.set(0.25, -0.6, 0);
+                const rightLeg = makePart(new THREE.CylinderGeometry(0.15, 0.13, 0.9), dhotiPantsMat, [0, -0.35, 0], 'rightLeg');
+                this.rightLegPivot.add(rightLeg);
+
+                const rightShoe = makePart(juttiGeo, shoeMat, [0, -0.85, 0.08], 'rightShoe');
+                const rightCurl = makePart(curlGeo, darkGoldMat, [0, -0.8, -0.2], 'rightCurl');
+                rightCurl.rotation.y = Math.PI / 2;
+                rightShoe.add(rightCurl);
+                this.rightLegPivot.add(rightShoe);
+                this.bodyContainer.add(this.rightLegPivot);
+
+                // --- PROCEDURAL POWERUP EQUIPMENT ATTACHMENT MODELS ---
+                // 1. Hoverboard attachment (positioned under feet)
+                const boardGeo = new THREE.BoxGeometry(1.2, 0.12, 2.2);
+                
+                this.hoverboardMesh = new THREE.Group();
+                const plate = makePart(boardGeo, stoneMat, [0, 0, 0], 'plate');
+                const plateGold = makePart(new THREE.BoxGeometry(1.24, 0.16, 2.24), darkGoldMat, [0, 0, 0], 'plateGold');
+                this.hoverboardMesh.add(plateGold);
+                this.hoverboardMesh.add(plate);
+                this.hoverboardMesh.position.set(0, -1.35, 0);
+                this.hoverboardMesh.visible = false;
+                this.bodyContainer.add(this.hoverboardMesh);
+
+                // 2. Jetpack attachment (positioned on back)
+                this.jetpackMesh = new THREE.Group();
+                const rocketTubeGeo = new THREE.CylinderGeometry(0.16, 0.16, 1.0, 8);
+                const rocketL = makePart(rocketTubeGeo, darkGoldMat, [-0.35, 0.2, 0.3], 'rocketL');
+                this.jetpackMesh.add(rocketL);
+                const rocketR = makePart(rocketTubeGeo, darkGoldMat, [0.35, 0.2, 0.3], 'rocketR');
+                this.jetpackMesh.add(rocketR);
+                
+                // Flame thrusters cones
+                const fireConeGeo = new THREE.ConeGeometry(0.12, 0.4, 8);
+                this.thrusterFlameL = new THREE.Mesh(fireConeGeo, new THREE.MeshBasicMaterial({ color: 0xff3700 }));
+                this.thrusterFlameL.position.set(-0.35, -0.4, 0.3);
+                this.thrusterFlameL.rotation.x = Math.PI;
+                this.jetpackMesh.add(this.thrusterFlameL);
+
+                this.thrusterFlameR = this.thrusterFlameL.clone();
+                this.thrusterFlameR.position.x = 0.35;
+                this.jetpackMesh.add(this.thrusterFlameR);
+
+                this.jetpackMesh.visible = false;
+                this.bodyContainer.add(this.jetpackMesh);
+
+                // 3. Jump Booster winged sandals wings
+                this.wingsMesh = new THREE.Group();
+                const wingGeo = new THREE.ConeGeometry(0.1, 0.35, 4);
+                wingGeo.rotateZ(Math.PI / 2);
+                const wingL = makePart(wingGeo, darkGoldMat, [-0.42, -1.15, 0], 'wingL');
+                this.wingsMesh.add(wingL);
+                const wingR = makePart(wingGeo, darkGoldMat, [0.42, -1.15, 0], 'wingR');
+                this.wingsMesh.add(wingR);
+                this.wingsMesh.visible = false;
+                this.bodyContainer.add(this.wingsMesh);
+            }
+
+            updateColors(shirt, shoes, skin) {
+                this.shirtHex = shirt;
+                this.shoesHex = shoes;
+                this.skinHex = skin;
+                this.buildModel();
+            }
+
+            animate(time, dt) {
+                const cycleSpeed = 16.0 * (speed / SPEED_START);
+                const angle = time * cycleSpeed;
+
+                // Sync powerup accessory visibility
+                this.hoverboardMesh.visible = isHoverboardActive;
+                this.jetpackMesh.visible = isJetpackActive;
+                this.wingsMesh.visible = isJumpBoosterActive;
+
+                if (gameState === STATE_CINEMATIC && customizerOpen) {
+                    // Majestic stable standing straight posture for styling preview!
+                    this.leftLegPivot.rotation.set(0, 0, 0);
+                    this.rightLegPivot.rotation.set(0, 0, 0);
+                    this.leftArmPivot.rotation.set(0, 0, -0.15); // Arms slightly outward
+                    this.rightArmPivot.rotation.set(0, 0, 0.15);
+                    this.torso.rotation.set(0, 0, 0);
+                    this.headGroup.rotation.set(0, 0, 0);
+                    
+                    // Reset body scaling and upright orientation
+                    this.bodyContainer.scale.set(1, 1, 1); // Stand up tall and straight!
+                    this.bodyContainer.position.y = 1.35;
+                    this.group.rotation.x = 0; // Reset any leftover crash rotations
+                    this.group.rotation.z = 0;
+                    return;
+                }
+
+                if (gameState === STATE_CRASHED) {
+                    this.group.rotation.x += 8 * dt;
+                    this.group.rotation.y += 12 * dt;
+                    this.group.rotation.z += 5 * dt;
+
+                    this.velY -= 28 * dt;
+                    this.posY += this.velY * dt;
+
+                    if (this.posY <= 0) {
+                        this.posY = 0;
+                        this.velY = 0;
+                        this.velZ *= 0.15;
+                    }
+
+                    this.bodyContainer.position.y = 1.35 + this.posY;
+
+                    this.group.position.z += this.velZ * dt;
+                    this.velZ -= this.velZ * 3.0 * dt;
+
+                    this.leftLegPivot.rotation.x = -1.5;
+                    this.rightLegPivot.rotation.x = 1.2;
+                    this.leftArmPivot.rotation.z = -1.4;
+                    this.rightArmPivot.rotation.z = 1.4;
+                    return;
+                }
+
+                // Smooth lane transit
+                const targetX = getLaneX(this.targetLane);
+                this.currentLaneX += (targetX - this.currentLaneX) * 15 * dt;
+                
+                if (gameState !== STATE_CINEMATIC) {
+                    this.group.position.x = this.currentLaneX;
+                }
+
+                // Smoothly climb to the sky if Jetpack is active, else manage gravity
+                if (isJetpackActive) {
+                    this.posY += (12.0 - this.posY) * 6 * dt;
+                    this.bodyContainer.position.y = 1.35 + this.posY;
+                    this.state = 'FLYING';
+
+                    // Jetpack flight body posture: Arms backward, legs trailing
+                    this.leftLegPivot.rotation.x = 0.3;
+                    this.rightLegPivot.rotation.x = 0.3;
+                    this.leftArmPivot.rotation.x = 1.2;
+                    this.rightArmPivot.rotation.x = 1.2;
+                    this.torso.rotation.x = 0.2;
+
+                    // Pulsating jet flames
+                    const pulse = 1.0 + Math.sin(time * 30) * 0.3;
+                    this.thrusterFlameL.scale.set(pulse, pulse * 1.5, pulse);
+                    this.thrusterFlameR.scale.set(pulse, pulse * 1.5, pulse);
+
+                    // Jetpack spark trail
+                    if (Math.random() < 0.4) {
+                        spawnFootprintParticles(this.group.position.x, this.posY - 0.5, -0.4);
+                    }
+
+                } else if (this.state === 'FLYING') {
+                    // Smooth descent from Jetpack sky zone
+                    this.posY += (0 - this.posY) * 6 * dt;
+                    this.bodyContainer.position.y = 1.35 + this.posY;
+                    if (this.posY < 0.1) {
+                        this.posY = 0;
+                        this.state = 'RUNNING';
+                    }
+                } else if (this.state === 'JUMPING') {
+                    this.velY -= 32 * dt;
+                    this.posY += this.velY * dt;
+
+                    if (this.posY <= 0) {
+                        this.posY = 0;
+                        this.velY = 0;
+                        this.state = 'RUNNING';
+                    }
+
+                    this.bodyContainer.position.y = 1.35 + this.posY;
+
+                    // Spawn wind/gust particles under Raja's feet if jump booster is active
+                    if (isJumpBoosterActive && Math.random() < 0.3) {
+                        spawnFootprintParticles(this.group.position.x, this.posY - 0.3, -0.2);
+                    }
+
+                    this.leftLegPivot.rotation.x = -0.5;
+                    this.rightLegPivot.rotation.x = -0.5;
+                    this.leftArmPivot.rotation.x = -1.2;
+                    this.rightArmPivot.rotation.x = -1.2;
+                    
+                    this.torso.rotation.x = -0.1;
+                    this.headGroup.rotation.x = 0.1;
+
+                } else if (this.state === 'SLIDING') {
+                    this.slideTimer -= dt;
+                    if (this.slideTimer <= 0) {
+                        this.state = 'RUNNING';
+                        this.bodyContainer.scale.set(1, 1, 1);
+                        this.bodyContainer.position.y = 1.35;
+                    } else {
+                        this.bodyContainer.scale.set(1.1, 0.5, 1.1);
+                        this.bodyContainer.position.y = 0.65;
+
+                        this.leftLegPivot.rotation.x = -1.2;
+                        this.rightLegPivot.rotation.x = -1.2;
+                        this.leftArmPivot.rotation.x = 1.0;
+                        this.rightArmPivot.rotation.x = 1.0;
+                        this.torso.rotation.x = 0.4;
+                    }
+
+                } else if (this.state === 'RUNNING') {
+                    this.leftLegPivot.rotation.x = Math.sin(angle) * 0.75;
+                    this.rightLegPivot.rotation.x = -Math.sin(angle) * 0.75;
+
+                    this.leftArmPivot.rotation.x = -Math.sin(angle) * 0.75;
+                    this.rightArmPivot.rotation.x = Math.sin(angle) * 0.75;
+
+                    this.bodyContainer.position.y = 1.35 + Math.abs(Math.sin(angle * 2)) * 0.08;
+                    this.torso.rotation.x = 0.05 + Math.sin(angle) * 0.02;
+                    this.torso.rotation.z = Math.sin(angle) * 0.02;
+
+                    this.headGroup.rotation.x = Math.sin(angle) * 0.04;
+                    this.headGroup.rotation.y = Math.cos(angle) * 0.03;
+
+                    if (Math.random() < 0.25) {
+                        spawnFootprintParticles(this.group.position.x, 0.1, -1);
+                    }
+                }
+            }
+
+            jump() {
+                if (this.state === 'RUNNING' || this.state === 'FLYING') {
+                    this.state = 'JUMPING';
+                    this.velY = isJumpBoosterActive ? 21.0 : 14.5; // Double jump height when Winged sandals active!
+                    audio.playJump();
+                    this.bodyContainer.scale.set(0.85, 1.25, 0.85);
+                    setTimeout(() => this.bodyContainer.scale.set(1, 1, 1), 150);
+                }
+            }
+
+            slide() {
+                if (this.state === 'RUNNING' || this.state === 'JUMPING') {
+                    this.state = 'SLIDING';
+                    this.slideTimer = 0.75;
+                    this.posY = 0;
+                    this.velY = 0;
+                    audio.playSlide();
+                }
+            }
+
+            moveLane(dir) {
+                if (gameState !== STATE_PLAYING) return;
+                
+                if (dir === 'L') {
+                    if (this.targetLane > 0) this.targetLane--;
+                } else if (dir === 'R') {
+                    if (this.targetLane < NUM_LANES - 1) this.targetLane++;
+                }
+            }
+        }
+
+        const player = new PlayerCharacter();
+
+
+        // --- PARTICLE SPECIAL EFFECTS SYSTEM ---
+        function spawnFootprintParticles(x, y, z) {
+            const dustCount = 3;
+            const geo = new THREE.DodecahedronGeometry(Math.random() * 0.15 + 0.05, 0);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xd4a373, transparent: true, opacity: 0.65 });
+
+            for(let i=0; i<dustCount; i++) {
+                const particle = new THREE.Mesh(geo, mat);
+                particle.position.set(
+                    x + (Math.random() - 0.5) * 0.6,
+                    y,
+                    z + (Math.random() - 0.5) * 0.6
+                );
+                
+                particle.userData = {
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: Math.random() * 2 + 1,
+                    vz: Math.random() * 2 + 1,
+                    life: 0.45,
+                    maxLife: 0.45
+                };
+
+                particlesGroup.add(particle);
+            }
+        }
+
+        // Spectacular impact explosion for solid stone collisions
+        function spawnImpactExplosion(x, y, z) {
+            const sparkCount = 25;
+            const sparkGeo = new THREE.BoxGeometry(0.15, 0.15, 0.15);
+            const sparkMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+            for (let i = 0; i < sparkCount; i++) {
+                const spark = new THREE.Mesh(sparkGeo, sparkMat);
+                spark.position.set(x + (Math.random() - 0.5) * 0.6, y + (Math.random() - 0.5) * 1.2, z);
+                spark.userData = {
+                    vx: (Math.random() - 0.5) * 16,
+                    vy: Math.random() * 12 + 4,
+                    vz: Math.random() * 14 + 6,
+                    life: 0.6,
+                    maxLife: 0.6
+                };
+                particlesGroup.add(spark);
+            }
+
+            const debrisCount = 10;
+            const debrisGeo = new THREE.DodecahedronGeometry(0.24, 0);
+            const debrisMat = new THREE.MeshStandardMaterial({ color: 0x5c4230, roughness: 0.9 });
+            for (let i = 0; i < debrisCount; i++) {
+                const chunk = new THREE.Mesh(debrisGeo, debrisMat);
+                chunk.position.set(x + (Math.random() - 0.5) * 0.4, y + (Math.random() - 0.5) * 1.0, z);
+                chunk.castShadow = true;
+                chunk.userData = {
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: Math.random() * 8 + 3,
+                    vz: Math.random() * 11 + 5,
+                    life: 1.0,
+                    maxLife: 1.0
+                };
+                particlesGroup.add(chunk);
+            }
+        }
+
+        function updateParticles(dt) {
+            for (let i = particlesGroup.children.length - 1; i >= 0; i--) {
+                const p = particlesGroup.children[i];
+                p.userData.life -= dt;
+                
+                if (p.userData.life <= 0) {
+                    particlesGroup.remove(p);
+                    continue;
+                }
+
+                p.position.x += p.userData.vx * dt;
+                p.position.y += p.userData.vy * dt;
+                p.position.z += p.userData.vz * dt;
+
+                const pct = p.userData.life / p.userData.maxLife;
+                p.scale.set(pct, pct, pct);
+                if (p.material.opacity !== undefined) {
+                    p.material.opacity = pct * 0.6;
+                }
+            }
+        }
+
+
+        // --- OBSTACLES, COINS & POWERUPS PROCEDURAL GENERATION ---
+        function spawnObstacles() {
+            while (lastObstacleZ > -280) {
+                lastObstacleZ -= Math.random() * 15 + 32;
+                
+                // Spawn exactly ONE obstacle at this Z-row to prevent lateral traps beside trains
+                const obstacleLane = Math.floor(Math.random() * 3);
+                
+                for (let lane = 0; lane < NUM_LANES; lane++) {
+                    if (lane !== obstacleLane) {
+                        // High chance to spawn coin trail, low chance to spawn a POWERUP item!
+                        const rand = Math.random();
+                        if (rand < 0.08) {
+                            spawnSinglePowerup(lane, lastObstacleZ);
+                        } else if (rand < 0.5) {
+                            spawnCoinChain(lane, lastObstacleZ);
+                        }
+                        continue;
+                    }
+
+                    if (Math.random() < 0.9) {
+                        const obsRnd = Math.random();
+                        let type = obstacleTypes.BARRIER_LOW;
+
+                        if (obsRnd < 0.20) {
+                            type = obstacleTypes.BARRIER_LOW;
+                        } else if (obsRnd < 0.40) {
+                            type = obstacleTypes.BARRIER_SPIKES; // The exciting dynamic spiked cylinder hurdle
+                        } else if (obsRnd < 0.60) {
+                            type = obstacleTypes.BARRIER_JUMPING; // Solar Chakra Gate
+                        } else if (obsRnd < 0.80) {
+                            type = obstacleTypes.TRAIN;
+                        } else {
+                            type = obstacleTypes.TRAIN_RAMPED;
+                        }
+
+                        createObstacleMesh(type, lane, lastObstacleZ);
+                    }
+                }
+
+                if (Math.abs(lastObstacleZ) % 60 < 15) {
+                    createSideScenery(lastObstacleZ);
+                }
+            }
+        }
+
+        // HIGHLY DETAILED HISTORICAL TEMPLES & PLACES (ON LEFT AND RIGHT SIDES WITH DETAILED TEXTURING)
+        function createSideScenery(z) {
+            const sides = [-1, 1]; // Generate temples on BOTH left and right sides
+            
+            sides.forEach(side => {
+                const posX = side * 14.5; // position further out to leave tracks safe
+
+                const sceneryGroup = new THREE.Group();
+                sceneryGroup.position.set(posX, 0, z);
+
+                // Use the procedural canvas texture to add high detail to the temple walls and pillars
+                const darkPillarMat = new THREE.MeshStandardMaterial({ map: ballastTexture, color: 0x332b28, roughness: 0.9 });
+                const mossBrickMat = new THREE.MeshStandardMaterial({ map: ballastTexture, color: 0x3e3530, roughness: 0.95 });
+
+                if (Math.random() < 0.5) {
+                    // 1. STEPPED SHIKHARA / DRAVIDIAN TEMPLE TOWER (Stepped architectural detailing)
+                    const gopuramGroup = new THREE.Group();
+                    const steps = 4;
+                    for (let i = 0; i < steps; i++) {
+                        const width = 4.2 - (i * 0.9);
+                        const length = 4.2 - (i * 0.9);
+                        const height = 1.3;
+                        const layerY = i * height + (height / 2);
+
+                        // Inner main dark stone layer block
+                        const blockGeo = new THREE.BoxGeometry(width, height, length);
+                        const layerMesh = new THREE.Mesh(blockGeo, mossBrickMat);
+                        layerMesh.position.y = layerY;
+                        layerMesh.castShadow = true;
+                        layerMesh.receiveShadow = true;
+                        gopuramGroup.add(layerMesh);
+
+                        // Thin protruding decorative architectural sandstone ledges
+                        const ledgeGeo = new THREE.BoxGeometry(width + 0.3, 0.15, length + 0.3);
+                        const ledge = new THREE.Mesh(ledgeGeo, stoneMat);
+                        ledge.position.set(0, layerY + (height / 2) - 0.075, 0);
+                        ledge.castShadow = true;
+                        gopuramGroup.add(ledge);
+
+                        // Ornamental golden details carved on ledges
+                        const goldDetailGeo = new THREE.BoxGeometry(width + 0.35, 0.08, 0.2);
+                        const goldDetailF = new THREE.Mesh(goldDetailGeo, darkGoldMat);
+                        goldDetailF.position.set(0, layerY, (length / 2) + 0.05);
+                        gopuramGroup.add(goldDetailF);
+                    }
+
+                    // Ornate golden crown spire (Amalaka & Kalasha)
+                    const domeGeo = new THREE.CylinderGeometry(0.4, 0.8, 0.6, 12);
+                    const dome = new THREE.Mesh(domeGeo, darkGoldMat);
+                    dome.position.set(0, steps * 1.3 + 0.3, 0);
+                    gopuramGroup.add(dome);
+
+                    const spireGeo = new THREE.ConeGeometry(0.18, 0.9, 8);
+                    const spire = new THREE.Mesh(spireGeo, darkGoldMat);
+                    spire.position.set(0, steps * 1.3 + 1.05, 0);
+                    gopuramGroup.add(spire);
+
+                    sceneryGroup.add(gopuramGroup);
+
+                } else {
+                    // 2. DETAILED HISTORICAL PILASTERED SHRINE WITH FIRE BASIN
+                    const shrineGroup = new THREE.Group();
+
+                    // Heavy base platform
+                    const pBase = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.6, 3.6), mossBrickMat);
+                    pBase.position.y = 0.3;
+                    pBase.receiveShadow = true;
+                    shrineGroup.add(pBase);
+
+                    // Four detailed corner pillars
+                    const pilGeo = new THREE.BoxGeometry(0.24, 3.2, 0.24);
+                    const offset = 1.4;
+                    for (let x = -offset; x <= offset; x += offset * 2) {
+                        for (let yZ = -offset; yZ <= offset; yZ += offset * 2) {
+                            const pillar = new THREE.Mesh(pilGeo, darkPillarMat);
+                            pillar.position.set(x, 2.2, yZ);
+                            pillar.castShadow = true;
+                            shrineGroup.add(pillar);
+
+                            // Golden capitals on columns
+                            const cap = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.4), darkGoldMat);
+                            cap.position.set(x, 3.8, yZ);
+                            shrineGroup.add(cap);
+                        }
+                    }
+
+                    // Heavy stone flat roof slab with gold borders
+                    const roof = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.4, 3.6), stoneMat);
+                    roof.position.y = 4.0;
+                    roof.castShadow = true;
+                    shrineGroup.add(roof);
+
+                    const roofGold = new THREE.Mesh(new THREE.BoxGeometry(3.7, 0.15, 3.7), darkGoldMat);
+                    roofGold.position.y = 4.2;
+                    shrineGroup.add(roofGold);
+
+                    // Central pedestal holding sacred brass fire container
+                    const centerPed = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.2, 8), stoneMat);
+                    centerPed.position.set(0, 1.2, 0);
+                    shrineGroup.add(centerPed);
+
+                    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.35, 0.3, 12), darkGoldMat);
+                    bowl.position.set(0, 1.8, 0);
+                    shrineGroup.add(bowl);
+
+                    // Flame light source & volumetric cone
+                    const flameLight = new THREE.PointLight(0xff4400, 3.0, 10.0, 1.5);
+                    flameLight.position.set(0, 2.2, 0);
+                    shrineGroup.add(flameLight);
+                    blinkingLights.push(flameLight);
+
+                    const fCone = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.65, 8), new THREE.MeshBasicMaterial({
+                        color: 0xff3700,
+                        transparent: true,
+                        opacity: 0.8,
+                        blending: THREE.AdditiveBlending
+                    }));
+                    fCone.position.set(0, 2.25, 0);
+                    shrineGroup.add(fCone);
+                    blinkingLights.push(fCone);
+
+                    sceneryGroup.add(shrineGroup);
+                }
+
+                obstaclesGroup.add(sceneryGroup);
+            });
+        }
+
+        // SPWNING DETAILED OBSTACLE MESH (DARK WEATHERED THEMED COLORS)
+        function createObstacleMesh(type, lane, z) {
+            const laneX = getLaneX(lane);
+            const obsMeshGroup = new THREE.Group();
+            obsMeshGroup.position.set(laneX, 0, z);
+            obsMeshGroup.userData = { type: type, lane: lane };
+
+            if (type === obstacleTypes.BARRIER_LOW) {
+                // FALLEN MOSSY TEMPLE PILLAR - RE-SKIN TO DARK BASALT (DARK COLORS)
+                const barGeo = new THREE.CylinderGeometry(0.35, 0.35, 3.3, 8);
+                barGeo.rotateZ(Math.PI / 2);
+                const bar = new THREE.Mesh(barGeo, darkBasaltMat); // DARK COLORS
+                bar.position.set(0, 0.45, 0);
+                bar.castShadow = true;
+                obsMeshGroup.add(bar);
+
+                for (let i = -1.2; i <= 1.2; i += 0.8) {
+                    const stripeGeo = new THREE.TorusGeometry(0.38, 0.04, 6, 16);
+                    stripeGeo.rotateY(Math.PI / 2);
+                    const stripe = new THREE.Mesh(stripeGeo, agedBronzeMat); // DARK COLORS
+                    stripe.position.set(i, 0.45, 0);
+                    obsMeshGroup.add(stripe);
+                }
+
+                const diyaBase = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.1, 8), darkBasaltMat);
+                diyaBase.position.set(0, 0.85, 0);
+                obsMeshGroup.add(diyaBase);
+
+                const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff5500 }));
+                beacon.position.set(0, 0.95, 0);
+                obsMeshGroup.add(beacon);
+                blinkingLights.push(beacon);
+
+            } else if (type === obstacleTypes.BARRIER_SPIKES) {
+                // SPINNING SPIKED TEMPLE LOG - RE-SKIN TO DARK EBONY WOOD (DARK COLORS)
+                const logGroup = new THREE.Group();
+                const logGeo = new THREE.CylinderGeometry(0.24, 0.24, 3.2, 8);
+                logGeo.rotateZ(Math.PI / 2);
+                
+                const logMesh = new THREE.Mesh(logGeo, darkWoodMat); // DARK COLORS
+                logMesh.castShadow = true;
+                logMesh.name = "spinningLog";
+                logGroup.add(logMesh);
+
+                const spikeGeo = new THREE.ConeGeometry(0.12, 0.5, 4);
+                spikeGeo.rotateX(Math.PI / 2);
+                for (let s = -1.2; s <= 1.2; s += 0.6) {
+                    const spike = new THREE.Mesh(spikeGeo, agedBronzeMat); // DARK COLORS
+                    spike.position.set(s, 0, 0);
+                    const angle = (s * 3.5);
+                    spike.position.y = Math.sin(angle) * 0.24;
+                    spike.position.z = Math.cos(angle) * 0.24;
+                    spike.rotation.x = angle;
+                    logGroup.add(spike);
+                }
+
+                const blockGeo = new THREE.BoxGeometry(0.5, 0.7, 0.5);
+                const blockL = new THREE.Mesh(blockGeo, darkBasaltMat);
+                blockL.position.set(-1.6, 0.25, 0);
+                logGroup.add(blockL);
+                
+                const blockR = blockL.clone();
+                blockR.position.x = 1.6;
+                logGroup.add(blockR);
+
+                logGroup.position.set(0, 0.2, 0);
+                obsMeshGroup.add(logGroup);
+
+            } else if (type === obstacleTypes.BARRIER_JUMPING) {
+                // GOLDEN SOLAR CHAKRA GATE - DARK COMBINATION COLORS (DARK COLORS)
+                const postL = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 3.2, 8), darkBasaltMat); // DARK COLORS
+                postL.position.set(-1.6, 1.6, 0);
+                postL.castShadow = true;
+                obsMeshGroup.add(postL);
+                const postR = postL.clone();
+                postR.position.x = 1.6;
+                obsMeshGroup.add(postR);
+                
+                const crossGroup = new THREE.Group();
+                crossGroup.name = "movingLaser";
+                
+                const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.12, 8, 24), darkGoldMat); // Antique gold
+                wheel.rotation.x = Math.PI/2;
+                crossGroup.add(wheel);
+
+                for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+                    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, 0.08), darkGoldMat);
+                    spoke.position.set(Math.sin(angle)*0.35, 0, Math.cos(angle)*0.35);
+                    spoke.rotation.y = -angle;
+                    crossGroup.add(spoke);
+                }
+                
+                obsMeshGroup.add(crossGroup);
+                obsMeshGroup.userData.currentLaserY = 1.5;
+
+            } else if (type === obstacleTypes.TRAIN) {
+                // COLOSSAL STONE TEMPLE CHARIOT (Ratha Chariot) - TEAK & BASALT SHADING (DARK COLORS)
+                const mainColor = (lane === 0) ? 0x2f1d18 : (lane === 1 ? 0x3d281e : 0x221712); // DARK COLORS
+                const woodMat = new THREE.MeshStandardMaterial({ color: mainColor, roughness: 0.8 });
+                const clothMat = new THREE.MeshStandardMaterial({ color: 0x7a1111, roughness: 0.65 }); // Dark Crimson tapestries
+
+                const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.4, 4.2, 16.0), darkBasaltMat); // DARK COLORS
+                cabin.position.set(0, 2.1, 0);
+                cabin.castShadow = true;
+                cabin.receiveShadow = true;
+                obsMeshGroup.add(cabin);
+
+                const shrine = new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.2, 12.0), darkBasaltMat);
+                shrine.position.set(0, 3.8, 0);
+                obsMeshGroup.add(shrine);
+
+                for (let side = -1.75; side <= 1.75; side += 3.5) {
+                    if (side === 0) continue;
+                    for (let w = -6; w <= 6; w += 4.0) {
+                        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.25, 12), woodMat);
+                        wheel.rotation.z = Math.PI / 2;
+                        wheel.position.set(side, 0.9, w);
+                        wheel.castShadow = true;
+                        obsMeshGroup.add(wheel);
+                    }
+                }
+
+                for (let bannerZ = -5; bannerZ <= 5; bannerZ += 5) {
+                    const banner = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.2, 1.2), clothMat);
+                    banner.position.set(-1.72, 2.2, bannerZ);
+                    obsMeshGroup.add(banner);
+
+                    const bannerR = banner.clone();
+                    bannerR.position.x = 1.72;
+                    obsMeshGroup.add(bannerR);
+                }
+
+                const shield = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.15, 8), darkGoldMat);
+                shield.rotation.x = Math.PI / 2;
+                shield.position.set(0, 1.5, -8.05);
+                obsMeshGroup.add(shield);
+
+                for (let cornerX = -1.4; cornerX <= 1.4; cornerX += 2.8) {
+                    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffaa00 }));
+                    beacon.position.set(cornerX, 4.5, -6);
+                    obsMeshGroup.add(beacon);
+                    blinkingLights.push(beacon);
+                }
+
+            } else if (type === obstacleTypes.TRAIN_RAMPED) {
+                // STEPPED SHUTTLE STEP PYRAMID - VOLCANIC DARK STONE (DARK COLORS)
+                const stepCount = 5;
+                const monumentWidth = 3.4;
+                const monumentLength = 14.0;
+                
+                const body = new THREE.Mesh(new THREE.BoxGeometry(monumentWidth, 4.2, monumentLength), darkBasaltMat); // DARK COLORS
+                body.position.set(0, 2.1, 2.0);
+                body.castShadow = true;
+                body.receiveShadow = true;
+                obsMeshGroup.add(body);
+
+                for (let i = 0; i < stepCount; i++) {
+                    const progress = i / (stepCount - 1);
+                    const stepY = progress * 4.2;
+                    const stepZ = -5.0 + (progress * 5.0);
+                    
+                    const stepGeo = new THREE.BoxGeometry(monumentWidth, 0.8, 2.5);
+                    const step = new THREE.Mesh(stepGeo, darkBasaltMat);
+                    step.position.set(0, stepY - 0.4, stepZ - 2.0);
+                    step.receiveShadow = true;
+                    obsMeshGroup.add(step);
+                }
+
+                const guideLGeo = new THREE.BoxGeometry(0.1, 0.28, 7.5);
+                const guideL = new THREE.Mesh(guideLGeo, darkGoldMat);
+                guideL.position.set(-1.65, 2.07, -5.5);
+                guideL.rotation.x = 0.55;
+                obsMeshGroup.add(guideL);
+
+                const guideR = guideL.clone();
+                guideR.position.x = 1.65;
+                obsMeshGroup.add(guideR);
+
+                for (let rCoins = -3; rCoins <= 3; rCoins += 2) {
+                    spawnSingleCoin(laneX, 4.75, z + 2.0 + rCoins);
+                }
+
+                obsMeshGroup.userData.isRamp = true;
+                obsMeshGroup.userData.trainTopY = 4.2;
+            }
+
+            obstaclesGroup.add(obsMeshGroup);
+        }
+
+        // Generate gold coins along a safe lane
+        function spawnCoinChain(lane, zStart) {
+            const laneX = getLaneX(lane);
+            const chainLength = 4;
+            const style = Math.random() < 0.4 ? 'ARCH' : 'STRAIGHT';
+
+            for (let i = 0; i < chainLength; i++) {
+                const zOffset = zStart + (i * 4);
+                let coinY = 0.8;
+
+                if (style === 'ARCH') {
+                    coinY = 0.8 + Math.sin((i / (chainLength - 1)) * Math.PI) * 2.5;
+                }
+
+                spawnSingleCoin(laneX, coinY, zOffset);
+            }
+        }
+
+        function spawnSingleCoin(x, y, z) {
+            const coinGroup = new THREE.Group();
+            coinGroup.position.set(x, y, z);
+
+            const outerGeo = new THREE.TorusGeometry(0.35, 0.08, 12, 24);
+            const outerMat = new THREE.MeshStandardMaterial({
+                color: 0xeab308,
+                metalness: 1.0,
+                roughness: 0.1,
+                emissive: 0xd97706,
+                emissiveIntensity: 1.5
+            });
+            const outerRing = new THREE.Mesh(outerGeo, outerMat);
+            outerRing.name = "outerRing";
+            outerRing.castShadow = true;
+            coinGroup.add(outerRing);
+
+            const coreGeo = new THREE.OctahedronGeometry(0.2, 0);
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0xff3700, transparent: true, opacity: 0.85 });
+            const innerCore = new THREE.Mesh(coreGeo, coreMat);
+            innerCore.name = "innerCore";
+            coinGroup.add(innerCore);
+
+            coinGroup.userData = {
+                radius: 0.5,
+                laneX: x,
+                y: y
+            };
+
+            coinsGroup.add(coinGroup);
+        }
+
+        // PROCEDURALLY SPAWN AN ANCIENT POWERUP PICKUP ON TRACKS
+        function spawnSinglePowerup(lane, z) {
+            const x = getLaneX(lane);
+            const y = 0.95;
+
+            // Pick a random powerup type
+            const types = [powerupTypes.MAGNET, powerupTypes.JETPACK, powerupTypes.HOVERBOARD, powerupTypes.JUMP_BOOSTER];
+            const type = types[Math.floor(Math.random() * types.length)];
+
+            const pickupGroup = new THREE.Group();
+            pickupGroup.position.set(x, y, z);
+            pickupGroup.userData = { type: type, radius: 0.6 };
+
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.1 });
+            const crystalColors = {
+                magnet: 0xeab308,       // Golden yellow magnet
+                jetpack: 0xef4444,      // Crimson red jetpack
+                hoverboard: 0x10b981,   // Emerald green hoverboard
+                jumpbooster: 0x3b82f6   // Sapphire blue booster
+            };
+            const jewelMat = new THREE.MeshBasicMaterial({ color: crystalColors[type] });
+
+            // Base glowing decorative halo ring under pickups
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.05, 6, 16), jewelMat);
+            ring.rotation.x = Math.PI / 2;
+            pickupGroup.add(ring);
+
+            if (type === powerupTypes.MAGNET) {
+                // Golden Horseshoe Magnet pickup model
+                const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.15, 0.15), goldMat);
+                base.position.y = -0.1;
+                pickupGroup.add(base);
+                const barL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.45, 0.15), goldMat);
+                barL.position.set(-0.19, 0.12, 0);
+                pickupGroup.add(barL);
+                const barR = barL.clone();
+                barR.position.x = 0.19;
+                pickupGroup.add(barR);
+
+                const tipL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.15), jewelMat);
+                tipL.position.set(-0.19, 0.35, 0);
+                pickupGroup.add(tipL);
+                const tipR = tipL.clone();
+                tipR.position.x = 0.19;
+                pickupGroup.add(tipR);
+
+            } else if (type === powerupTypes.HOVERBOARD) {
+                // Sleek golden mini surf shield
+                const board = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.85), goldMat);
+                board.rotation.x = 0.2;
+                pickupGroup.add(board);
+                const inlay = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.6), jewelMat);
+                inlay.rotation.x = 0.2;
+                pickupGroup.add(inlay);
+
+            } else if (type === powerupTypes.JETPACK) {
+                // Miniature double-cylinder brass jetpack
+                const cylinderL = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.6, 8), goldMat);
+                cylinderL.position.set(-0.12, 0, 0);
+                pickupGroup.add(cylinderL);
+                const cylinderR = cylinderL.clone();
+                cylinderR.position.x = 0.12;
+                pickupGroup.add(cylinderR);
+
+                const brace = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 0.08), goldMat);
+                pickupGroup.add(brace);
+
+                const nozzle = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.15, 6), jewelMat);
+                nozzle.position.set(-0.12, -0.38, 0);
+                nozzle.rotation.x = Math.PI;
+                pickupGroup.add(nozzle);
+                const nozzleR = nozzle.clone();
+                nozzleR.position.x = 0.12;
+                pickupGroup.add(nozzleR);
+
+            } else if (type === powerupTypes.JUMP_BOOSTER) {
+                // Golden winged sandal wings model
+                const ankle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.3, 8), goldMat);
+                pickupGroup.add(ankle);
+
+                const wing = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.35, 4), jewelMat);
+                wing.rotation.z = Math.PI / 2;
+                wing.position.set(-0.15, 0.05, 0);
+                pickupGroup.add(wing);
+
+                const wingR = wing.clone();
+                wingR.rotation.z = -Math.PI / 2;
+                wingR.position.x = 0.15;
+                pickupGroup.add(wingR);
+            }
+
+            powerupsGroup.add(pickupGroup);
+        }
+
+        // Cleanup out-of-bounds assets to prevent memory leak
+        function cleanupEntities() {
+            for (let i = obstaclesGroup.children.length - 1; i >= 0; i--) {
+                const obs = obstaclesGroup.children[i];
+                if (obs.position.z > 40) {
+                    obs.traverse(child => {
+                        const idx = blinkingLights.indexOf(child);
+                        if (idx !== -1) blinkingLights.splice(idx, 1);
+                        
+                        const idxB = rotatingBeacons.indexOf(child);
+                        if (idxB !== -1) rotatingBeacons.splice(idxB, 1);
+                    });
+                    obstaclesGroup.remove(obs);
+                }
+            }
+
+            for (let i = coinsGroup.children.length - 1; i >= 0; i--) {
+                const coin = coinsGroup.children[i];
+                if (coin.position.z > 40) {
+                    coinsGroup.remove(coin);
+                }
+            }
+
+            for (let i = powerupsGroup.children.length - 1; i >= 0; i--) {
+                const pup = powerupsGroup.children[i];
+                if (pup.position.z > 40) {
+                    powerupsGroup.remove(pup);
+                }
+            }
+        }
+
+        // Added this utility to move tracks, needed for loop logic
+        function updateTracks(dt) {
+            const moveSpeed = speed * dt;
+            distanceTraveled += moveSpeed;
+
+            trackPiecesGroup.children.forEach(piece => {
+                piece.position.z += moveSpeed;
+                if (piece.position.z > TRACK_PIECE_LENGTH * 2) {
+                    piece.position.z -= TRACK_PIECE_LENGTH * MAX_TRACK_PIECES;
+                }
+            });
+
+            obstaclesGroup.children.forEach(obs => {
+                obs.position.z += moveSpeed;
+                
+                // Keep moving cross elements logic
+                if (obs.userData.type === obstacleTypes.BARRIER_JUMPING) {
+                    const laser = obs.getObjectByName("movingLaser");
+                    if (laser) {
+                        laser.rotation.z += 3 * dt;
+                    }
+                } else if (obs.userData.type === obstacleTypes.BARRIER_SPIKES) {
+                    const log = obs.getObjectByName("spinningLog");
+                    if (log) {
+                        log.rotation.x += 4 * dt;
+                    }
+                }
+            });
+
+            coinsGroup.children.forEach(coin => {
+                coin.position.z += moveSpeed;
+                const outer = coin.getObjectByName("outerRing");
+                if (outer) {
+                    outer.rotation.y += 2 * dt;
+                }
+                const core = coin.getObjectByName("innerCore");
+                if (core) {
+                    core.rotation.y += 3 * dt;
+                    core.rotation.x += 1 * dt;
+                }
+            });
+
+            powerupsGroup.children.forEach(pup => {
+                pup.position.z += moveSpeed;
+                pup.rotation.y += 2 * dt;
+                pup.position.y = 0.95 + Math.sin(Date.now() * 0.003) * 0.15;
+            });
+            
+            // Adjust the tracker so obstacles generate properly
+            lastObstacleZ += moveSpeed;
+        }
+
+        // --- REALTIME COLLISION, POWERUPS & INTERACTION ENGINE ---
+        let isPlayerOnTrain = false;
+        let activeTrainY = 0;
+
+        function checkCollisions(dt) {
+            const px = player.group.position.x;
+            const py = player.bodyContainer.position.y - 1.35; // height offset relative to local floor
+            const pz = player.group.position.z;
+
+            // Compute player physical bounding box
+            let playerBoxHeight = (player.state === 'SLIDING') ? 0.75 : 1.75;
+            const playerBox = new THREE.Box3(
+                new THREE.Vector3(px - 0.45, py, pz - 0.45),
+                new THREE.Vector3(px + 0.45, py + playerBoxHeight, pz + 0.45)
+            );
+
+            // 1. Core Powerups Pickup Collection
+            for (let i = powerupsGroup.children.length - 1; i >= 0; i--) {
+                const pup = powerupsGroup.children[i];
+                const pupX = pup.position.x;
+                const pupY = pup.position.y;
+                const pupZ = pup.position.z;
+
+                const dz = Math.abs(pupZ - pz);
+                const dx = Math.abs(pupX - px);
+                const dy = Math.abs(pupY - (py + 0.8));
+
+                if (dx < 0.95 && dy < 1.15 && dz < 1.1) {
+                    collectPowerup(pup.userData.type, pup);
+                }
+            }
+
+            // Raja is immune to ground obstacles while flying high in Sky Jetpack mode
+            if (isJetpackActive && py > 10.0) return;
+
+            // 2. Obstacles Collisions
+            let standingOnTrainThisFrame = false;
+
+            obstaclesGroup.children.forEach(obs => {
+                let obsBox = new THREE.Box3();
+                const ox = obs.position.x;
+                const oy = obs.position.y;
+                const oz = obs.position.z;
+
+                if (obs.userData.type === obstacleTypes.BARRIER_LOW) {
+                    obsBox.set(
+                        new THREE.Vector3(ox - 1.6, oy, oz - 0.4),
+                        new THREE.Vector3(ox + 1.6, oy + 1.5, oz + 0.4)
+                    );
+                } else if (obs.userData.type === obstacleTypes.BARRIER_SPIKES) {
+                    // Rotating spiked log box
+                    obsBox.set(
+                        new THREE.Vector3(ox - 1.6, oy, oz - 0.45),
+                        new THREE.Vector3(ox + 1.6, oy + 1.2, oz + 0.45)
+                    );
+                } else if (obs.userData.type === obstacleTypes.BARRIER_JUMPING) {
+                    const laserY = obs.userData.currentLaserY || 1.5;
+                    obsBox.set(
+                        new THREE.Vector3(ox - 1.6, oy + laserY - 0.15, oz - 0.3),
+                        new THREE.Vector3(ox + 1.6, oy + laserY + 0.15, oz + 0.3)
+                    );
+                } else if (obs.userData.type === obstacleTypes.TRAIN) {
+                    obsBox.set(
+                        new THREE.Vector3(ox - 1.75, oy, oz - 8.5),
+                        new THREE.Vector3(ox + 1.75, oy + 4.4, oz + 8.5)
+                    );
+                } else if (obs.userData.type === obstacleTypes.TRAIN_RAMPED) {
+                    obsBox.set(
+                        new THREE.Vector3(ox - 1.75, oy, oz - 5.5),
+                        new THREE.Vector3(ox + 1.75, oy + 4.4, oz + 9.0)
+                    );
+                } else {
+                    return; // Scenery components
+                }
+
+                // Verify intersect
+                if (playerBox.intersectsBox(obsBox)) {
+                    
+                    // RAMP / TEMPLE ROOF RUNNING LOGIC
+                    if (obs.userData.isRamp) {
+                        const relativeZ = pz - oz;
+
+                        if (py >= obs.userData.trainTopY - 0.5) {
+                            standingOnTrainThisFrame = true;
+                            activeTrainY = obs.userData.trainTopY;
+                        } else if (relativeZ >= -9.25 && relativeZ <= -1.75) {
+                            standingOnTrainThisFrame = true;
+                            const slopeProgress = (relativeZ - (-9.25)) / 7.5;
+                            activeTrainY = THREE.MathUtils.lerp(0, obs.userData.trainTopY, Math.min(Math.max(slopeProgress, 0), 1));
+                        } else {
+                            triggerRecoilHit();
+                        }
+                    } else if (obs.userData.type === obstacleTypes.TRAIN) {
+                        if (py + 0.1 >= 4.2 && player.velY <= 0) {
+                            standingOnTrainThisFrame = true;
+                            activeTrainY = 4.2;
+                        } else {
+                            triggerRecoilHit();
+                        }
+                    } else if (obs.userData.type === obstacleTypes.BARRIER_LOW || obs.userData.type === obstacleTypes.BARRIER_SPIKES) {
+                        if (player.state !== 'JUMPING' && py <= 0.2) {
+                            triggerRecoilHit();
+                        }
+                    } else if (obs.userData.type === obstacleTypes.BARRIER_JUMPING) {
+                        triggerRecoilHit();
+                    }
+                }
+            });
+
+            // Adjust player vertical alignment if riding a train
+            if (standingOnTrainThisFrame) {
+                isPlayerOnTrain = true;
+                if (player.state !== 'JUMPING') {
+                    player.posY = activeTrainY;
+                    player.bodyContainer.position.y = 1.35 + player.posY;
+                }
+            } else {
+                if (isPlayerOnTrain) {
+                    isPlayerOnTrain = false;
+                    if (player.state !== 'JUMPING') {
+                        player.state = 'JUMPING';
+                        player.velY = -5;
+                    }
+                }
+            }
+
+            // 3. Coins Collection (with Magnet Attraction logic)
+            for (let i = coinsGroup.children.length - 1; i >= 0; i--) {
+                const coin = coinsGroup.children[i];
+                let coinX = coin.position.x;
+                let coinY = coin.userData.y !== undefined ? coin.userData.y : coin.position.y;
+                let coinZ = coin.position.z;
+
+                // If magnet or jetpack is active, attract coins smoothly
+                if (isMagnetActive || isJetpackActive) {
+                    const magnetRange = isMagnetActive ? 18.0 : 8.0; // Magnet has huge range, jetpack has a smaller helper range
+                    const distToPlayer = coin.position.distanceTo(new THREE.Vector3(px, py + 0.8, pz));
+                    if (distToPlayer < magnetRange) {
+                        const pullSpeed = (isMagnetActive ? 25.0 : 15.0) * dt;
+                        coin.position.x += (px - coin.position.x) * pullSpeed;
+                        coin.position.y += ((py + 0.8) - coin.position.y) * pullSpeed;
+                        coin.position.z += (pz - coin.position.z) * pullSpeed;
+                        
+                        coinX = coin.position.x;
+                        coinY = coin.position.y;
+                        coinZ = coin.position.z;
+                    }
+                }
+
+                const dz = Math.abs(coinZ - pz);
+                const dx = Math.abs(coinX - px);
+                const dy = Math.abs(coinY - (py + 0.8));
+
+                if (dx < 0.9 && dy < 1.1 && dz < 1.0) {
+                    collectCoin(coin);
+                }
+            }
+        }
+
+        // COIN COLLECTION
+        function collectCoin(coinMesh) {
+            coinsGroup.remove(coinMesh);
+            coins++;
+            score += 10 * multiplier;
+            coinsVal.textContent = coins;
+            audio.playCoin();
+        }
+
+        // POWERUP RETRIEVAL ACTION
+        function collectPowerup(type, pickupMesh) {
+            audio.playPowerup();
+            powerupsGroup.remove(pickupMesh);
+
+            triggerAlert(type.toUpperCase() + ' RECLAIMED!');
+
+            if (type === powerupTypes.MAGNET) {
+                isMagnetActive = true;
+                magnetTimeLeft = POWERUP_DURATION;
+                document.getElementById('p-hud-magnet').classList.remove('hidden');
+
+            } else if (type === powerupTypes.JETPACK) {
+                isJetpackActive = true;
+                jetpackTimeLeft = POWERUP_DURATION;
+                document.getElementById('p-hud-jetpack').classList.remove('hidden');
+                
+                // Cancel active hoverboard to allow flying posture
+                isHoverboardActive = false;
+                hoverboardTimeLeft = 0;
+                document.getElementById('p-hud-hoverboard').classList.add('hidden');
+
+            } else if (type === powerupTypes.HOVERBOARD) {
+                isHoverboardActive = true;
+                hoverboardTimeLeft = POWERUP_DURATION;
+                document.getElementById('p-hud-hoverboard').classList.remove('hidden');
+
+                // Cancel active jetpack to allow riding hoverboard
+                isJetpackActive = false;
+                jetpackTimeLeft = 0;
+                document.getElementById('p-hud-jetpack').classList.add('hidden');
+
+            } else if (type === powerupTypes.JUMP_BOOSTER) {
+                isJumpBoosterActive = true;
+                jumpBoosterTimeLeft = POWERUP_DURATION;
+                document.getElementById('p-hud-jumpbooster').classList.remove('hidden');
+            }
+        }
+
+        // TRIGGER THE CORE HIT CHECK (Checks Hoverboard protection shield)
+        function triggerRecoilHit() {
+            if (isInvincible) return; // Immune during safety cooldown
+
+            if (isHoverboardActive) {
+                // SAVED BY THE ROYAL HOVERBOARD!
+                isHoverboardActive = false;
+                hoverboardTimeLeft = 0;
+                document.getElementById('p-hud-hoverboard').classList.add('hidden');
+
+                // Visual shield break explosion effect
+                audio.playCrash();
+                spawnImpactExplosion(player.group.position.x, player.bodyContainer.position.y, 0.2);
+                triggerAlert('HOVERBOARD DEPLOYED!');
+
+                // Start brief invincibility frames safety frame
+                isInvincible = true;
+                invincibilityTimer = 1.5; // 1.5 seconds invincibility frame
+            } else {
+                // No board active, trigger game end crash
+                triggerCrash();
+            }
+        }
+
+        function triggerAlert(msg) {
+            alertElement.textContent = msg;
+            alertElement.classList.remove('hidden', 'scale-90');
+            alertElement.classList.add('scale-105');
+            setTimeout(() => {
+                alertElement.classList.remove('scale-105');
+                alertElement.classList.add('hidden', 'scale-90');
+            }, 1000);
+        }
+
+        // Heavy, real solid physical crash logic (Game End Trigger)
+        function triggerCrash() {
+            if (gameState !== STATE_PLAYING) return;
+            
+            gameState = STATE_CRASHED;
+            stopInstrumentalMusic(); // Silence music loop on impact for dramatic tension!
+            audio.playCrash();
+            player.state = 'CRASHED';
+
+            player.velZ = 18.0; // flies backward violently towards camera
+            player.velY = 7.5;  // pops upwards into the air
+
+            spawnImpactExplosion(player.group.position.x, player.bodyContainer.position.y, -0.2);
+
+            // Violent Camera shake impact effect
+            let shakeTime = 0.55;
+            const shakeInterval = setInterval(() => {
+                if (shakeTime <= 0) {
+                    clearInterval(shakeInterval);
+                    return;
+                }
+                camera.position.x += (Math.random() - 0.5) * 1.2;
+                camera.position.y += (Math.random() - 0.5) * 1.2;
+                camera.rotation.z += (Math.random() - 0.5) * 0.05;
+                shakeTime -= 0.05;
+            }, 50);
+
+            // Save highscore
+            if (score > highscore) {
+                highscore = score;
+                localStorage.setItem('runrajarun_highscore', highscore);
+                highscoreVal.textContent = highscore;
+                newHighScoreTag.classList.remove('hidden');
+            } else {
+                newHighScoreTag.classList.add('hidden');
+            }
+
+            // Reveal Game Over UI Screen smoothly
+            setTimeout(() => {
+                hudElement.classList.add('opacity-0');
+                goScore.textContent = score;
+                goCoins.textContent = coins;
+                gameOverScreen.classList.remove('hidden');
+                setTimeout(() => {
+                    gameOverScreen.classList.remove('opacity-0');
+                }, 50);
+            }, 1400);
+        }
+
+
+        // --- USER INPUT & UNIFIED INTERACTIVE POINTER CONTROLS (ANDROID & WINDOWS TOUCH) ---
+
+        // HIGHLY OPTIMIZED UNIFIED POINTER-SWIPE CONTROL ENGINE FOR ANDROID & WINDOWS TOUCH SCREENS
+        let startX = 0;
+        let startY = 0;
+        let isSwiping = false;
+        const touchTracker = document.getElementById('touch-tracker');
+
+        window.addEventListener('pointerdown', (e) => {
+            if (gameState !== STATE_PLAYING) return;
+            
+            // Register start point (Supports touch inputs on Windows/Android seamlessly)
+            startX = e.clientX;
+            startY = e.clientY;
+            isSwiping = true;
+
+            // Visual feedback indicator positioning
+            touchTracker.style.left = `${startX - 32}px`;
+            touchTracker.style.top = `${startY - 32}px`;
+            touchTracker.classList.remove('hidden');
+            touchTracker.style.opacity = '1';
+        }, { passive: true });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!isSwiping || gameState !== STATE_PLAYING) return;
+
+            const currentX = e.clientX;
+            const currentY = e.clientY;
+
+            // Track cursor/finger position
+            touchTracker.style.left = `${currentX - 32}px`;
+            touchTracker.style.top = `${currentY - 32}px`;
+
+            const diffX = currentX - startX;
+            const diffY = currentY - startY;
+            const threshold = 40; // calibrated swipe threshold for precision
+
+            if (Math.abs(diffX) > threshold || Math.abs(diffY) > threshold) {
+                // Determine gesture direction
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    if (diffX > 0) {
+                        player.moveLane('R');
+                    } else {
+                        player.moveLane('L');
+                    }
+                } else {
+                    if (diffY > 0) {
+                        player.slide();
+                    } else {
+                        player.jump();
+                    }
+                }
+                // Break swipe cycle until next pointerdown to prevent multiple lanes skipped in a single drag
+                isSwiping = false;
+                touchTracker.style.opacity = '0';
+                setTimeout(() => touchTracker.classList.add('hidden'), 200);
+            }
+        }, { passive: true });
+
+        window.addEventListener('pointerup', () => {
+            isSwiping = false;
+            touchTracker.style.opacity = '0';
+            setTimeout(() => touchTracker.classList.add('hidden'), 200);
+        }, { passive: true });
+
+        window.addEventListener('pointercancel', () => {
+            isSwiping = false;
+            touchTracker.style.opacity = '0';
+            setTimeout(() => touchTracker.classList.add('hidden'), 200);
+        }, { passive: true });
+
+        // Add keyboard support
+        window.addEventListener('keydown', (e) => {
+            if (gameState !== STATE_PLAYING) return;
+            
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                player.moveLane('L');
+            } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                player.moveLane('R');
+            } else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+                player.jump();
+            } else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+                player.slide();
+            }
+        });
+
+
+        // Customizer configuration name strings
+        let activeShirtName = "Ruby";
+        let activeShoesName = "Gold";
+        let activeSkinName = "Tan";
+
+        // --- CUSTOMIZER FUNCTIONS ---
+        function setPlayerColor(type, hex, name, btnEl) {
+            playerColors[type] = hex;
+            const lblEl = document.getElementById(`label-${type}-color`);
+            if (lblEl) lblEl.textContent = name;
+            player.updateColors(playerColors.shirt, playerColors.shoes, playerColors.skin);
+
+            if (type === 'shirt') activeShirtName = name;
+            if (type === 'shoes') activeShoesName = name;
+            if (type === 'skin') activeSkinName = name;
+
+            const descEl = document.getElementById('preview-config-desc');
+            if (descEl) {
+                descEl.textContent = `${activeShirtName} Tunic • ${activeShoesName} Juttis • ${activeSkinName} Skin`;
+            }
+
+            // Update SVG Avatar Portrait in real time!
+            const svgSkin = document.getElementById('svg-skin');
+            const svgShirt = document.getElementById('svg-shirt');
+            if (type === 'skin' && svgSkin) svgSkin.setAttribute('fill', hex);
+            if (type === 'shirt' && svgShirt) svgShirt.setAttribute('fill', hex);
+
+            if (btnEl) {
+                // Visual selected border update for color dots
+                const siblings = btnEl.parentNode.querySelectorAll('button');
+                siblings.forEach(sib => {
+                    sib.classList.remove('border-2', 'border-amber-400', 'ring-2', 'ring-amber-500/30');
+                    sib.classList.add('border-transparent');
+                });
+                btnEl.classList.remove('border-transparent');
+                btnEl.classList.add('border-2', 'border-amber-400', 'ring-2', 'ring-amber-500/30');
+            }
+        }
+
+        // --- RETRACTABLE CUSTOMIZER DROPDOWN INTERACTION ---
+        let customizerOpen = false;
+        btnToggleCustomizer.addEventListener('click', () => {
+            customizerOpen = !customizerOpen;
+            if (customizerOpen) {
+                // Remove hidden first to allow the scale/opacity transition to execute beautifully
+                topCustomizer.classList.remove('hidden');
+                leftPreviewCard.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    if (customizerOpen) {
+                        topCustomizer.classList.remove('opacity-0', 'scale-95', 'pointer-events-none');
+                        topCustomizer.classList.add('opacity-100', 'scale-100', 'pointer-events-auto');
+                        leftPreviewCard.classList.remove('opacity-0', 'scale-95', 'pointer-events-none');
+                        leftPreviewCard.classList.add('opacity-100', 'scale-100', 'pointer-events-auto');
+                    }
+                }, 20);
+
+                btnToggleCustomizer.classList.add('border-amber-500/50', 'text-amber-400');
+
+                // Smoothly fade out main menu title and run action buttons
+                mainPanel.classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => {
+                    if (customizerOpen) mainPanel.classList.add('hidden');
+                }, 500);
+            } else {
+                topCustomizer.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+                topCustomizer.classList.remove('opacity-100', 'scale-100', 'pointer-events-auto');
+                leftPreviewCard.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+                leftPreviewCard.classList.remove('opacity-100', 'scale-100', 'pointer-events-auto');
+                btnToggleCustomizer.classList.remove('border-amber-500/50', 'text-amber-400');
+
+                // Wait for the transition duration then apply the hidden display state
+                setTimeout(() => {
+                    if (!customizerOpen) {
+                        topCustomizer.classList.add('hidden');
+                        leftPreviewCard.classList.add('hidden');
+                    }
+                }, 300);
+
+                // Smoothly restore main menu title and run action buttons
+                mainPanel.classList.remove('hidden');
+                setTimeout(() => {
+                    if (!customizerOpen) mainPanel.classList.remove('opacity-0', 'pointer-events-none');
+                }, 50);
+            }
+            audio.playCoin(); // click chime
+        });
+
+        // --- RETRACTABLE SFX AUDIO TOGGLE INTERACTION ---
+        const btnSound = document.getElementById('btn-sound');
+        const soundIcon = document.getElementById('sound-icon');
+        const soundLabel = btnSound ? btnSound.querySelector('span:last-child') : null;
+        
+        if (btnSound) {
+            btnSound.addEventListener('click', (e) => {
+                e.stopPropagation();
+                soundEnabled = !soundEnabled;
+                if (soundEnabled) {
+                    if (soundIcon) soundIcon.textContent = "🔊";
+                    if (soundLabel) soundLabel.textContent = "ON";
+                    audio.playCoin(); // confirm with a soft chime
+                    startInstrumentalMusic(); // Launch or resume Raga drone soundtrack
+                } else {
+                    if (soundIcon) soundIcon.textContent = "🔇";
+                    if (soundLabel) soundLabel.textContent = "OFF";
+                    stopInstrumentalMusic(); // Silence Raga drone soundtrack
+                }
+            });
+        }
+
+
+        // --- SYSTEM ENGINE LOOPS & RESET STATE ---
+
+        function updateScreenRatio() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            if (camera.aspect < 1) {
+                // Adjust FOV for narrow mobile screens to keep tracks fully visible
+                camera.fov = 60 + (1 - camera.aspect) * 35; 
+            } else {
+                camera.fov = 60; // Standard FOV for landscape
+            }
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.addEventListener('resize', updateScreenRatio);
+        // Call immediately to fix ratio on startup
+        updateScreenRatio();
+
+        // Main Play Button setup
+        playBtn.addEventListener('click', () => {
+            mainPanel.classList.add('opacity-0');
+            topCustomizer.classList.add('opacity-0');
+            leftPreviewCard.classList.add('opacity-0');
+            btnToggleCustomizer.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                mainPanel.classList.add('hidden');
+                topCustomizer.classList.add('hidden');
+                leftPreviewCard.classList.add('hidden');
+                btnToggleCustomizer.classList.add('hidden');
+                startCountdown();
+            }, 500);
+        });
+
+        // Studio Info Credits Modal Interactivity
+        if (infoBtn && infoCloseBtn && infoModal) {
+            infoBtn.addEventListener('click', () => {
+                audio.playCoin(); // soft chime on select
+                infoModal.classList.remove('hidden');
+                setTimeout(() => {
+                    infoModal.classList.remove('opacity-0');
+                    infoModal.querySelector('div').classList.remove('scale-95');
+                    infoModal.querySelector('div').classList.add('scale-100');
+                }, 50);
+            });
+
+            infoCloseBtn.addEventListener('click', () => {
+                audio.playCoin(); // soft chime on exit
+                infoModal.classList.add('opacity-0');
+                infoModal.querySelector('div').classList.remove('scale-100');
+                infoModal.querySelector('div').classList.add('scale-95');
+                setTimeout(() => {
+                    infoModal.classList.add('hidden');
+                }, 300);
+            });
+        }
+
+        // Preview Map setup (Cycles cinematic cameras)
+        previewBtn.addEventListener('click', () => {
+            cinematicMode = (cinematicMode + 1) % 3;
+            const labels = [
+                "🎬 PREVIEW: TEMPLE SWEEP",
+                "🚁 PREVIEW: SKY CRANE",
+                "🚄 PREVIEW: CHARIOT TRACKER"
+            ];
+            previewBtn.querySelector('span').textContent = labels[cinematicMode];
+            audio.playCoin();
+        });
+
+        function startCountdown() {
+            startInstrumentalMusic(); // Make sure Raga drone soundtrack is running
+            gameState = STATE_COUNTDOWN;
+            countdownScreen.classList.remove('hidden');
+            setTimeout(() => {
+                countdownScreen.classList.remove('opacity-0');
+            }, 50);
+            
+            let count = 3;
+            countdownNum.textContent = count;
+            audio.playCoin();
+
+            camera.up.set(0, 1, 0);
+
+            const interval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownNum.textContent = count;
+                    audio.playCoin();
+                } else if (count === 0) {
+                    countdownNum.textContent = "RUN!";
+                    audio.playJump();
+                } else {
+                    clearInterval(interval);
+                    countdownScreen.classList.add('opacity-0');
+                    setTimeout(() => {
+                        countdownScreen.classList.add('hidden');
+                        countdownScreen.classList.remove('opacity-0');
+                        startGameplay();
+                    }, 350);
+                }
+            }, 1000);
+        }
+
+        function startGameplay() {
+            gameState = STATE_PLAYING;
+            
+            score = 0;
+            coins = 0;
+            multiplier = 1;
+            speed = SPEED_START;
+            distanceTraveled = 0;
+            activeLane = 1;
+            
+            player.targetLane = 1;
+            player.currentLaneX = 0;
+            player.posY = 0;
+            player.velY = 0;
+            player.velZ = 0;
+            player.state = 'RUNNING';
+            
+            isPlayerOnTrain = false;
+            activeTrainY = 0;
+
+            // Reset active powerup properties
+            isMagnetActive = false;
+            isJetpackActive = false;
+            isHoverboardActive = false;
+            isJumpBoosterActive = false;
+            isInvincible = false;
+            invincibilityTimer = 0;
+            
+            magnetTimeLeft = 0;
+            jetpackTimeLeft = 0;
+            hoverboardTimeLeft = 0;
+            jumpBoosterTimeLeft = 0;
+
+            // Hide powerup HUD panels
+            document.getElementById('p-hud-magnet').classList.add('hidden');
+            document.getElementById('p-hud-jetpack').classList.add('hidden');
+            document.getElementById('p-hud-hoverboard').classList.add('hidden');
+            document.getElementById('p-hud-jumpbooster').classList.add('hidden');
+
+            player.group.position.set(0, 0, 0); 
+            player.bodyContainer.position.set(0, 1.35, 0);
+            player.bodyContainer.scale.set(1, 1, 1);
+            player.group.rotation.set(0, 0, 0);
+
+            scoreVal.textContent = "000000";
+            coinsVal.textContent = "0";
+            multiplierVal.textContent = "x1";
+            hudElement.classList.remove('opacity-0');
+
+            camera.up.set(0, 1, 0);
+
+            blinkingLights.length = 0; 
+            rotatingBeacons.length = 0;
+            while(obstaclesGroup.children.length > 0) obstaclesGroup.remove(obstaclesGroup.children[0]);
+            while(coinsGroup.children.length > 0) coinsGroup.remove(coinsGroup.children[0]);
+            while(powerupsGroup.children.length > 0) powerupsGroup.remove(powerupsGroup.children[0]);
+            lastObstacleZ = -40;
+        }
+
+        restartBtn.addEventListener('click', () => {
+            gameOverScreen.classList.add('opacity-0');
+            setTimeout(() => {
+                gameOverScreen.classList.add('hidden');
+                startCountdown();
+            }, 300);
+        });
+
+        menuBtn.addEventListener('click', () => {
+            startInstrumentalMusic(); // Resume majestic loop on menu return
+            gameOverScreen.classList.add('opacity-0');
+            setTimeout(() => {
+                gameOverScreen.classList.add('hidden');
+                
+                mainPanel.classList.remove('hidden');
+                setTimeout(() => {
+                    mainPanel.classList.remove('opacity-0');
+                }, 50);
+                
+                customizerOpen = false;
+                topCustomizer.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+                topCustomizer.classList.remove('opacity-100', 'scale-100', 'pointer-events-auto');
+                leftPreviewCard.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+                leftPreviewCard.classList.remove('opacity-100', 'scale-100', 'pointer-events-auto');
+                leftPreviewCard.classList.remove('hidden');
+                topCustomizer.classList.remove('hidden');
+                btnToggleCustomizer.classList.remove('border-amber-500/50', 'text-amber-400', 'hidden', 'opacity-0');
+                btnToggleCustomizer.classList.add('pointer-events-auto');
+                
+                gameState = STATE_CINEMATIC;
+            }, 300);
+        });
+
+
+        // --- ANIMATE CLOCK LOOP ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const dt = Math.min(clock.getDelta(), 0.1); 
+            const elapsedTime = clock.getElapsedTime();
+
+            // CONTROL MENURUINS SCENERY VISIBILITY STATE
+            menuRuinsGroup.visible = (gameState === STATE_CINEMATIC || gameState === STATE_COUNTDOWN);
+
+            // ORGANIC FIERY FLICKER EFFECT on pillars, torches, and shrines
+            blinkingLights.forEach(light => {
+                if (light) {
+                    const flicker = 1.0 + Math.sin(elapsedTime * 15) * 0.3 + Math.cos(elapsedTime * 22) * 0.15;
+                    
+                    if (light instanceof THREE.Mesh) {
+                        light.scale.set(0.9 + flicker * 0.1, 1.0 + flicker * 0.15, 0.9 + flicker * 0.1);
+                        light.material.opacity = 0.5 + flicker * 0.25;
+                    } else if (light instanceof THREE.PointLight) {
+                        light.intensity = flicker * 3.5;
+                    } else {
+                        light.material.opacity = 0.5 + Math.sin(elapsedTime * 14) * 0.5;
+                    }
+                }
+            });
+
+            // Spin scenery energy terminal beacons
+            rotatingBeacons.forEach(beacon => {
+                if (beacon) {
+                    beacon.rotation.y += 2 * dt;
+                    beacon.rotation.z = Math.sin(elapsedTime * 2) * 0.1;
+                }
+            });
+
+            // --- DECREMENT POWERUP ACTIVE TIMERS ---
+            if (gameState === STATE_PLAYING) {
+                // 1. Invincibility Safety Frame decrement
+                if (isInvincible) {
+                    invincibilityTimer -= dt;
+                    if (invincibilityTimer <= 0) {
+                        isInvincible = false;
+                        player.group.visible = true; // ensure model is fully visible after blink
+                    } else {
+                        // Flash Raja model inside safety frames
+                        player.group.visible = (Math.floor(elapsedTime * 24) % 2 === 0);
+                    }
+                }
+
+                // 2. Magnet decrement
+                if (isMagnetActive) {
+                    magnetTimeLeft -= dt;
+                    const percent = (magnetTimeLeft / POWERUP_DURATION) * 100;
+                    document.getElementById('p-bar-magnet').style.width = percent + '%';
+                    if (magnetTimeLeft <= 0) {
+                        isMagnetActive = false;
+                        document.getElementById('p-hud-magnet').classList.add('hidden');
+                    }
+                }
+
+                // 3. Jetpack decrement & Sky Coins Generation
+                if (isJetpackActive) {
+                    jetpackTimeLeft -= dt;
+                    const percent = (jetpackTimeLeft / POWERUP_DURATION) * 100;
+                    document.getElementById('p-bar-jetpack').style.width = percent + '%';
+
+                    // Procedurally spawn flying sky coins in Raja's target flight path!
+                    if (distanceTraveled - lastSkyCoinSpawnZ > 4.5) {
+                        lastSkyCoinSpawnZ = distanceTraveled;
+                        // Spawns beautifully lined up coins in current target lane
+                        const skyX = getLaneX(player.targetLane);
+                        spawnSingleCoin(skyX, 12.5, -35.0); 
+                    }
+
+                    if (jetpackTimeLeft <= 0) {
+                        isJetpackActive = false;
+                        document.getElementById('p-hud-jetpack').classList.add('hidden');
+                    }
+                }
+
+                // 4. Hoverboard decrement
+                if (isHoverboardActive) {
+                    hoverboardTimeLeft -= dt;
+                    const percent = (hoverboardTimeLeft / POWERUP_DURATION) * 100;
+                    document.getElementById('p-bar-hoverboard').style.width = percent + '%';
+                    if (hoverboardTimeLeft <= 0) {
+                        isHoverboardActive = false;
+                        document.getElementById('p-hud-hoverboard').classList.add('hidden');
+                    }
+                }
+
+                // 5. Jump Booster decrement
+                if (isJumpBoosterActive) {
+                    jumpBoosterTimeLeft -= dt;
+                    const percent = (jumpBoosterTimeLeft / POWERUP_DURATION) * 100;
+                    document.getElementById('p-bar-jumpbooster').style.width = percent + '%';
+                    if (jumpBoosterTimeLeft <= 0) {
+                        isJumpBoosterActive = false;
+                        document.getElementById('p-hud-jumpbooster').classList.add('hidden');
+                    }
+                }
+            }
+
+            if (gameState === STATE_CINEMATIC) {
+                // LOCK PLAYER SHOWCASE PREVIEW AND ROTATE
+                if (customizerOpen) {
+                    player.group.position.set(0, 0.19, -6); // Rest perfectly flush on the temple ground!
+                    player.group.rotation.y = Math.PI; // Stop spinning and face the camera perfectly!
+                } else {
+                    player.group.position.set(0, 0.15, -6);
+                    player.group.rotation.y = elapsedTime * 1.2; // Keep spinning when customizer is closed
+                }
+                player.posY = 0;
+                player.bodyContainer.position.y = 1.35;
+
+                // Golden warm incense embers rising elegantly around Raja customizer spot
+                if (Math.random() < 0.12) {
+                    const sparkGeo = new THREE.DodecahedronGeometry(Math.random() * 0.08 + 0.04, 0);
+                    const sparkMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.8 });
+                    const ember = new THREE.Mesh(sparkGeo, sparkMat);
+                    ember.position.set((Math.random() - 0.5) * 4.0, -1.0, -6.0 + (Math.random() - 0.5) * 4.0);
+                    ember.userData = {
+                        vx: (Math.random() - 0.5) * 0.5,
+                        vy: Math.random() * 1.5 + 0.8,
+                        vz: (Math.random() - 0.5) * 0.5,
+                        life: 1.5,
+                        maxLife: 1.5
+                    };
+                    particlesGroup.add(ember);
+                }
+
+                if (customizerOpen) {
+                    // Stable front view of the full player character for clean styling preview!
+                    camera.position.set(0, 1.55, -2.4); // Zoomed in perfectly directly in front
+                    camera.lookAt(new THREE.Vector3(0, 0.95, -6.0));
+                } else {
+                    if (cinematicMode === 0) {
+                        // GORGEOUS CLOSE-UP ORBIT around Raja showcase and the new majestic courtyard
+                        const radius = 6.2;
+                        const pathSpeed = 0.4;
+                        camera.position.x = Math.sin(elapsedTime * pathSpeed) * radius;
+                        camera.position.y = 2.2 + Math.sin(elapsedTime * 0.2) * 0.8;
+                        camera.position.z = -6 + Math.cos(elapsedTime * pathSpeed) * radius;
+                        camera.lookAt(new THREE.Vector3(0, 1.35, -6));
+                    } else if (cinematicMode === 1) {
+                        // Sky Crane overhead
+                        camera.position.x = 0;
+                        camera.position.y = 11 + Math.sin(elapsedTime * 0.4) * 3;
+                        camera.position.z = -15 + Math.sin(elapsedTime * 0.25) * 15;
+                        camera.lookAt(new THREE.Vector3(0, -1, camera.position.z - 40));
+                    } else if (cinematicMode === 2) {
+                        // Low rail tracking camera
+                        camera.position.x = Math.sin(elapsedTime * 0.5) * 4;
+                        camera.position.y = 2.2;
+                        camera.position.z = -20 + Math.cos(elapsedTime * 0.3) * 6;
+                        camera.lookAt(new THREE.Vector3(0, 1.8, camera.position.z - 35));
+                    }
+                }
+
+                updateTracks(12.0 * dt);
+                spawnObstacles();
+                cleanupEntities();
+
+                player.animate(elapsedTime, dt);
+
+            } else if (gameState === STATE_COUNTDOWN) {
+                const targetCamPos = new THREE.Vector3(0, 5.0, 7.5);
+                camera.position.lerp(targetCamPos, 8 * dt);
+                
+                const targetLookAt = new THREE.Vector3(0, 1.6, -15);
+                camera.lookAt(targetLookAt);
+
+                updateTracks(8.0 * dt);
+                cleanupEntities();
+
+                player.animate(elapsedTime, dt);
+
+            } else if (gameState === STATE_PLAYING) {
+                if (speed < SPEED_MAX) {
+                    speed += SPEED_ACCEL * dt;
+                }
+
+                score = Math.floor(distanceTraveled * 0.4 * multiplier);
+                scoreVal.textContent = String(score).padStart(6, '0');
+
+                // Constant camera follow mechanics (Third-Person trailing)
+                const targetX = player.group.position.x * 0.7;
+                camera.position.x += (targetX - camera.position.x) * 6 * dt;
+                camera.position.y += (5.0 + (player.posY * 0.3) - camera.position.y) * 8 * dt;
+                camera.position.z += (7.2 - camera.position.z) * 8 * dt;
+
+                camera.lookAt(new THREE.Vector3(camera.position.x * 0.8, 1.25 + (player.posY * 0.4), -20));
+
+                updateTracks(dt);
+                spawnObstacles();
+                checkCollisions(dt);
+                cleanupEntities();
+
+                player.animate(elapsedTime, dt);
+
+            } else if (gameState === STATE_CRASHED) {
+                player.animate(elapsedTime, dt);
+                
+                const targetCamZ = player.group.position.z + 7.5;
+                const targetCamX = player.group.position.x * 0.7;
+                camera.position.x += (targetCamX - camera.position.x) * 4 * dt;
+                camera.position.y += (4.5 + (player.posY * 0.4) - camera.position.y) * 4 * dt;
+                camera.position.z += (targetCamZ - camera.position.z) * 4 * dt;
+                
+                const targetLookPoint = new THREE.Vector3(player.group.position.x, 1.25 + player.posY, player.group.position.z);
+                camera.lookAt(targetLookPoint);
+            }
+
+            updateParticles(dt);
+            renderer.render(scene, camera);
+        }
+
+        // --- CINEMATIC INTRO: RAVITEJA TECH LOADING ---
+        function runIntro() {
+            const logoEl = document.getElementById('intro-logo');
+            const progressEl = document.getElementById('intro-progress-bar');
+            const statusEl = document.getElementById('intro-status');
+            const introScreen = document.getElementById('intro-screen');
+            const loadingElements = document.getElementById('intro-loading-elements');
+            const titleReveal = document.getElementById('intro-title-reveal');
+            
+            const originalText = "RAVITEJA TECH";
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*";
+            let shuffleCount = 0;
+            const maxShuffles = 18;
+            
+            // 1. Shuffling letters animation
+            const shuffleInterval = setInterval(() => {
+                let shuffled = "";
+                for (let i = 0; i < originalText.length; i++) {
+                    if (originalText[i] === " ") {
+                        shuffled += " ";
+                        continue;
+                    }
+                    if (shuffleCount > i * 1.2) {
+                        shuffled += originalText[i];
+                    } else {
+                        shuffled += chars[Math.floor(Math.random() * chars.length)];
+                    }
+                }
+                logoEl.textContent = shuffled;
+                shuffleCount++;
+                if (shuffleCount >= maxShuffles) {
+                    clearInterval(shuffleInterval);
+                    logoEl.textContent = originalText;
+                }
+            }, 60);
+
+            // 2. Generate floating golden CSS sparks for background ambiance
+            const particlesContainer = document.getElementById('intro-particles');
+            if (particlesContainer) {
+                for (let i = 0; i < 24; i++) {
+                    const spark = document.createElement('div');
+                    spark.className = 'intro-spark';
+                    const size = Math.random() * 8 + 4;
+                    spark.style.width = size + 'px';
+                    spark.style.height = size + 'px';
+                    spark.style.left = Math.random() * 100 + 'vw';
+                    spark.style.animationDuration = (Math.random() * 4 + 3) + 's';
+                    spark.style.animationDelay = (Math.random() * 3) + 's';
+                    particlesContainer.appendChild(spark);
+                }
+            }
+
+            // 3. Progress loader simulation
+            let progress = 0;
+            const loadingPhrases = [
+                "Initializing Engine...",
+                "Loading 3D Temple Courtyard...",
+                "Texturing Sacred Ruins...",
+                "Spawning Chariots...",
+                "Raja is Ready!"
+            ];
+            
+            const progressInterval = setInterval(() => {
+                progress += Math.floor(Math.random() * 8) + 4;
+                if (progress > 100) progress = 100;
+                
+                progressEl.style.width = progress + '%';
+                
+                const phraseIndex = Math.min(Math.floor(progress / 22), loadingPhrases.length - 1);
+                statusEl.textContent = `${loadingPhrases[phraseIndex]} ${progress}%`;
+                
+                if (progress >= 100) {
+                    clearInterval(progressInterval);
+                    
+                    // Finish Loading effect
+                    logoEl.classList.add('scale-105', 'duration-500', 'transition-transform');
+                    statusEl.classList.add('text-amber-400');
+                    
+                    setTimeout(() => {
+                        // Smoothly fade out loading progress elements
+                        loadingElements.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+                        
+                        setTimeout(() => {
+                            loadingElements.classList.add('hidden');
+                            
+                            // Make dramatic title reveal element visible
+                            titleReveal.classList.remove('hidden');
+                            
+                            // Play epic drum/whoosh sound cue
+                            if (audio && typeof audio.playJump === 'function') {
+                                audio.playJump(); 
+                            }
+                            
+                            setTimeout(() => {
+                                titleReveal.classList.remove('opacity-0', 'scale-90');
+                                titleReveal.classList.add('opacity-100', 'scale-100');
+                            }, 50);
+                            
+                            // Hold the game title on the stone wall for 1.8 seconds, then fade out the screen
+                            setTimeout(() => {
+                                introScreen.classList.add('opacity-0', 'pointer-events-none');
+                                // Play golden bell sound cue as it clears
+                                if (audio && typeof audio.playCoin === 'function') {
+                                    audio.playCoin(); 
+                                }
+                                setTimeout(() => {
+                                    introScreen.remove(); // Clean memory once completed
+                                    startInstrumentalMusic(); // Launch gorgeous Raga drone soundtrack loop!
+                                }, 1000);
+                            }, 1800);
+                        }, 500);
+                    }, 800);
+                }
+            }, 100);
+        }
+
+        window.onload = function () {
+            runIntro();
+            animate();
+        };
+
+    </script>
+</body>
+</html>
